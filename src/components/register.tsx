@@ -27,7 +27,7 @@ const Register: React.FC = () => {
       navigate('/templateList')
       // אם ההרשמה הצליחה, נשמור את הטוקן ב-localStorage וננווט לדף אחר
       localStorage.setItem("token", response.data.token);
-      userStore.register({ email: data.email, password: data.password });
+      // userStore.register({ email: data.email, password: data.password });
       console.log("register successfully", response.data);
       navigate("/templateList");
     } catch (error) {

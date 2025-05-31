@@ -1,6 +1,6 @@
 // TemplateEditor מתוקן - קומפוננטה מלאה עם דיבוג
 import React, { useEffect, useState, useCallback } from 'react';
-import axios from 'axios';
+import axios, { AxiosRequestConfig } from 'axios';
 import { useParams, useLocation } from 'react-router-dom';
 import PersonalDetailsForm from '../components/ResumeFile/personalDetailsForm';
 import ResumeDescriptionGenerator from '../components/ResumeFile/resumeDescriptionGenerator';
@@ -56,8 +56,8 @@ const getMonthNumber = (monthName: string) => {
   return monthNames[monthName] !== undefined ? monthNames[monthName] : 0;
 };
 
-const TemplateEditor = () => {
-  const { name } = useParams(); // template name או "edit"/"new"
+const TemplateEditor: React.FC = () => {
+  const { name } = useParams<{ name: string }>(); // template name או "edit"/"new"
   const location = useLocation();
   
   // 🚨 דיבוג בתחילת הקומפוננטה
@@ -113,7 +113,6 @@ const TemplateEditor = () => {
   const [testList, setTestList] = useState<any[]>([]);
   const [skills, setSkills] = useState<any[]>([]);
   const [formSelectorData, setFormSelectorData] = useState<any>({});
-  const [saveStatus, setSaveStatus] = useState('saved');
   const [resumeId, setResumeId] = useState<any>(null);
   const [isInitialCreation, setIsInitialCreation] = useState(true);
   const [cssLoaded, setCssLoaded] = useState(false);
@@ -121,8 +120,6 @@ const TemplateEditor = () => {
 
   // הגדרת השרת
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-
-  
 
   // 🔄 טעינת נתונים קיימים - גרסה מתוקנת!
   useEffect(() => {
@@ -290,7 +287,7 @@ const TemplateEditor = () => {
     (window as any).resumeAutoSaveBlocked = true;
     
     const originalAxios = axios.post;
-    axios.post = (...args: any[]) => {
+    axios.post = (...args: [string, any?, AxiosRequestConfig?]) => {
       if (args[0] && args[0].includes('resume-file') && blockAutoSave) {
         console.log('🚫 חסימת שמירה אוטומטית!', args[0]);
         return Promise.resolve({ data: { blocked: true } });
@@ -675,319 +672,310 @@ const TemplateEditor = () => {
            localStorage.getItem('authToken') || 
            localStorage.getItem('accessToken');
   }, []);
-  // 🔧 תיקון פונקציית השמירה בשורות 745-750
-const saveResumeWithImage = useCallback(async (forceManual = false) => {
-  if (blockAutoSave && !forceManual) {
-    console.log('🚫 שמירה אוטומטית נחסמה!');
-    return null;
-  }
 
-  console.log('💾 שמירה ידנית - התחלה');
-  
-  try {
-    setSaveStatus('saving');
-    
-    if (!formData?.firstName && !formData?.lastName && !summary && 
-        experienceList.length === 0 && educationList.length === 0 && 
-        testList.length === 0 && skills.length === 0) {
-      console.log('🔕 אין נתונים לשמירה');
-      alert('נא למלא לפחות פרט אחד לפני השמירה');
-      setSaveStatus('saved');
-      return;
+  // 🔧 תיקון פונקציית השמירה
+  const saveResumeWithImage = useCallback(async (forceManual = false) => {
+    if (blockAutoSave && !forceManual) {
+      console.log('🚫 שמירה אוטומטית נחסמה!');
+      return null;
     }
 
-    const token = getAuthToken();
-    if (!token) {
-      alert('נדרש להתחבר מחדש לפני השמירה');
-      throw new Error('לא נמצא טוקן התחברות');
-    }
-
-    console.log('📸 יוצר תמונה של קורות החיים...');
+    console.log('💾 שמירה ידנית - התחלה');
     
-    const resumeElement = document.getElementById('resume-preview');
-    if (!resumeElement) {
-      throw new Error('לא נמצא אלמנט התצוגה המקדימה');
-    }
+    try {
+      
+      if (!formData?.firstName && !formData?.lastName && !summary && 
+          experienceList.length === 0 && educationList.length === 0 && 
+          testList.length === 0 && skills.length === 0) {
+        console.log('🔕 אין נתונים לשמירה');
+        alert('נא למלא לפחות פרט אחד לפני השמירה');
+        return;
+      }
 
-    const canvas = await html2canvas(resumeElement, {
-      scale: 3,
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: '#ffffff',
-      width: resumeElement.offsetWidth,
-      height: resumeElement.offsetHeight,
-      scrollX: 0,
-      scrollY: 0,
-      logging: false
-    });
+      const token = getAuthToken();
+      if (!token) {
+        alert('נדרש להתחבר מחדש לפני השמירה');
+        throw new Error('לא נמצא טוקן התחברות');
+      }
 
-    const imageBlob = await new Promise<Blob>((resolve) => {
-      canvas.toBlob((blob) => resolve(blob!), 'image/png', 1.0);
-    });
+      console.log('📸 יוצר תמונה של קורות החיים...');
+      
+      const resumeElement = document.getElementById('resume-preview');
+      if (!resumeElement) {
+        throw new Error('לא נמצא אלמנט התצוגה המקדימה');
+      }
 
-    let baseFileName;
-    const isLocalId = resumeId && resumeId.toString().startsWith('local_');
-    if (!isLocalId && resumeId && !isInitialCreation) {
-      baseFileName = `resume_${resumeId}.png`;
-    } else {
-      baseFileName = `resume_${Date.now()}.png`;
-    }
+      const canvas = await html2canvas(resumeElement, {
+        scale: 3,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        width: resumeElement.offsetWidth,
+        height: resumeElement.offsetHeight,
+        scrollX: 0,
+        scrollY: 0,
+        logging: false
+      });
 
-    const imageFile = new File([imageBlob], baseFileName, { type: 'image/png' });
+      const imageBlob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob((blob) => resolve(blob!), 'image/png', 1.0);
+      });
 
-    console.log('✅ תמונה נוצרה:', imageFile.name, `${(imageFile.size / 1024).toFixed(1)}KB`);
-
-    // ✅ תיקון - התאמה לשרת האמיתי!
-    console.log('🆔 מידע על הקורות חיים:', {
-      resumeId: resumeId,
-      isInitialCreation: isInitialCreation,
-      isEditing: isEditingExisting,
-      existingResumeId: existingResumeData?.id
-    });
-
-    // 🎯 לוגיקה נכונה לעדכון VS יצירה
-    const hasValidResumeId = resumeId && !resumeId.toString().startsWith('local_');
-    const isEditingMode = isEditingExisting && existingResumeData?.id;
-    
-    const isUpdate = hasValidResumeId || isEditingMode;
-    const actualResumeId = resumeId || existingResumeData?.id;
-    
-    // 🔧 התאמה לשרת - נתיבים שונים וצורת שליחה שונה!
-    let method, url;
-    if (isUpdate) {
-      method = 'PUT';
-      url = `${API_BASE_URL}/resume-file/update/${actualResumeId}`; // 🔧 הנתיב הנכון!
-    } else {
-      method = 'POST';
-      url = `${API_BASE_URL}/resume-file`;
-    }
-
-    // יצירת FormData עכשיו כשהכל מוגדר
-    const formDataToSend = new FormData();
-    
-    // יצירת FormData נפרד לכל פרמטר
-    formDataToSend.append('file', imageFile);
-    
-    // 🔧 פורמט שונה לפי סוג הפעולה!
-    let fieldPrefix;
-    if (isUpdate) {
-      fieldPrefix = ''; // נסה בלי prefix בעדכון
-    } else {
-      fieldPrefix = ''; // גם ביצירה
-    }
-    
-    // 🚨 הוסף את ה-ID אם זה עדכון
-    if (isUpdate) {
-      formDataToSend.append('Id', actualResumeId);
-      formDataToSend.append('ResumeId', actualResumeId);
-    }
-    
-    // המרת כל הרשימות ל-JSON
-    const skillsJson = JSON.stringify((skills || []).map((skill: any) => ({
-      Name: skill.name || '',
-      Level: skill.level || ''
-    })));
-
-    const languageItemsJson = JSON.stringify(((formSelectorData as any).Shafot || []).map((lang: any) => ({
-      LanguageName: lang[0] || '',
-      ProficiencyLevel: lang[1] || ''
-    })));
-
-    const employmentExperienceItemsJson = JSON.stringify((experienceList || []).map((exp: any) => ({
-      Company: exp.company || '',
-      Position: exp.position || '',
-      JobType: exp.jobType || '',
-      Location: exp.location || '',
-      StartDate: exp.startDate?.year && exp.startDate?.month ? 
-                 new Date(parseInt(exp.startDate.year), getMonthNumber(exp.startDate.month), 1).toISOString() : 
-                 new Date().toISOString(),
-      EndDate: exp.currentJob ? new Date().toISOString() : 
-               (exp.endDate?.year && exp.endDate?.month ? 
-                new Date(parseInt(exp.endDate.year), getMonthNumber(exp.endDate.month), 1).toISOString() : 
-                new Date().toISOString()),
-      CurrentJob: exp.currentJob || false,
-      Experience: exp.experience || ''
-    })));
-
-    const educationItemsJson = JSON.stringify((educationList || []).map((edu: any) => ({
-      Institution: edu.institution || '',
-      Field: edu.field || '',
-      StartDate: edu.startDate || '',
-      EndDate: edu.endDate || ''
-    })));
-
-    const courseItemsJson = JSON.stringify(((formSelectorData as any).Korsim || []).map((item: any) => ({
-      CourseName: item[0] || '',
-      Institution: item[1] || '',
-      Year: item[2] || ''
-    })));
-
-    const hobbyItemsJson = JSON.stringify(((formSelectorData as any).Tahbivim || []).map((item: any) => ({
-      HobbyName: item[0] || ''
-    })));
-
-    const linkItemsJson = JSON.stringify(((formSelectorData as any).Kishurim || []).map((link: any) => ({
-      Title: link[0] || '',
-      Url: link[1] || ''
-    })));
-
-    const militaryServiceItemsJson = JSON.stringify(((formSelectorData as any).SherutTzvaee || []).map((service: any) => ({
-      Unit: service[0] || '',
-      Role: service[1] || ''
-    })));
-
-    const motivationItemsJson = JSON.stringify(((formSelectorData as any).Motamishit || []).map((item: any) => ({
-      Title: 'מוטיבציה אישית',
-      Content: item[0] || ''
-    })));
-
-    const referenceItemsJson = JSON.stringify(((formSelectorData as any).Mamlitsim || []).map((ref: any) => ({
-      Name: ref[0] || '',
-      Role: ref[1] || '',
-      Email: ref[4] || '',
-      Phone: ref[3] || ''
-    })));
-
-    const volunteeringItemsJson = JSON.stringify(((formSelectorData as any).Etandvuyot || []).map((vol: any) => ({
-      Organization: vol[0] || '',
-      Role: vol[1] || '',
-      Year: vol[2] || ''
-    })));
-
-    const testItemsJson = JSON.stringify((testList || []).map((test: any) => ({
-      Name: test.name || '',
-      Score: test.score || ''
-    })));
-
-    // יצירת FormData נפרד לכל פרמטר
-    formDataToSend.append('file', imageFile);
-    
-    // 🔧 פורמט שונה לפי סוג הפעולה!
-    const prefix = isUpdate ? 'resumeFileDto.' : '';
-    
-    formDataToSend.append(`${fieldPrefix}FileName`, baseFileName);
-    formDataToSend.append(`${fieldPrefix}Template`, templateName);
-    formDataToSend.append(`${fieldPrefix}FirstName`, formData?.firstName || '');
-    formDataToSend.append(`${fieldPrefix}LastName`, formData?.lastName || '');
-    formDataToSend.append(`${fieldPrefix}Position`, formData?.position || '');
-    formDataToSend.append(`${fieldPrefix}Email`, formData?.email || 'default@email.com');
-    formDataToSend.append(`${fieldPrefix}Phone`, formData?.phone || '');
-    formDataToSend.append(`${fieldPrefix}City`, formData?.city || '');
-    formDataToSend.append(`${fieldPrefix}Country`, formData?.country || '');
-    formDataToSend.append(`${fieldPrefix}Address`, formData?.address || '');
-    formDataToSend.append(`${fieldPrefix}Citizenship`, formData?.citizenship || '');
-    formDataToSend.append(`${fieldPrefix}LicenseType`, formData?.licenseType || '');
-    formDataToSend.append(`${fieldPrefix}BirthDate`, formData?.birthDate || '');
-    formDataToSend.append(`${fieldPrefix}IdNumber`, formData?.idNumber || '');
-    formDataToSend.append(`${fieldPrefix}ProfileImage`, formData?.image || '');
-    formDataToSend.append(`${fieldPrefix}Summary`, summary || '');
-
-    // הוספת הרשימות כ-JSON
-    formDataToSend.append(`${fieldPrefix}Skills`, skillsJson);
-    formDataToSend.append(`${fieldPrefix}LanguageItems`, languageItemsJson);
-    formDataToSend.append(`${fieldPrefix}EmploymentExperienceItems`, employmentExperienceItemsJson);
-    formDataToSend.append(`${fieldPrefix}EducationItems`, educationItemsJson);
-    formDataToSend.append(`${fieldPrefix}CourseItems`, courseItemsJson);
-    formDataToSend.append(`${fieldPrefix}HobbyItems`, hobbyItemsJson);
-    formDataToSend.append(`${fieldPrefix}LinkItems`, linkItemsJson);
-    formDataToSend.append(`${fieldPrefix}MilitaryServiceItems`, militaryServiceItemsJson);
-    formDataToSend.append(`${fieldPrefix}MotivationItems`, motivationItemsJson);
-    formDataToSend.append(`${fieldPrefix}ReferenceItems`, referenceItemsJson);
-    formDataToSend.append(`${fieldPrefix}VolunteeringItems`, volunteeringItemsJson);
-    formDataToSend.append(`${fieldPrefix}TestItems`, testItemsJson);
-
-    setBlockAutoSave(false);
-
-    console.log(`🚀 ${isUpdate ? 'מעדכן' : 'יוצר'} קורות חיים בשרת...`);
-    console.log('📍 URL:', url);
-    console.log('📍 Method:', method);
-    console.log('📍 Resume ID:', actualResumeId);
-    
-    // 🔍 Debug - בואו נראה מה אנחנו שולחים
-    console.log('📋 FormData שנשלח:');
-    for (let [key, value] of formDataToSend.entries()) {
-      if (key === 'file') {
-        console.log(`${key}: [File] ${(value as File).name} (${((value as File).size / 1024).toFixed(1)}KB)`);
-      } else if (key === 'resumeFileDto') {
-        console.log(`${key}: [JSON] ${(value as string).substring(0, 100)}...`);
+      let baseFileName;
+      const isLocalId = resumeId && resumeId.toString().startsWith('local_');
+      if (!isLocalId && resumeId && !isInitialCreation) {
+        baseFileName = `resume_${resumeId}.png`;
       } else {
-        console.log(`${key}: ${value}`);
+        baseFileName = `resume_${Date.now()}.png`;
       }
-    }
-    
-    const response = await axios({
-      method: method as any,
-      url,
-      data: formDataToSend,
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'multipart/form-data',
-      },
-      timeout: 45000
-    });
-    
-    console.log('📦 תגובה מהשרת:', response.data);
-    console.log(`✅ ${isUpdate ? 'עודכן' : 'נוצר'} בשרת בהצלחה!`);
-    
-    setBlockAutoSave(true);
-    
-    if (response.data?.id) {
-      setResumeId(response.data.id);
-      console.log('🆔 ID נקבע:', response.data.id);
-    }
-    
-    setIsInitialCreation(false);
-    setSaveStatus('saved');
-    return response.data;
 
-  } catch (error: any) {
-    console.error('❌ שגיאה בשמירה:', error);
-    
-    // 🔍 הדפס הכל בפירוט!
-    console.error('📍 Status:', error.response?.status);
-    console.error('📍 Status Text:', error.response?.statusText);
-    console.error('📍 Headers:', error.response?.headers);
-    console.error('📍 Data (raw):', error.response?.data);
-    console.error('📍 Data type:', typeof error.response?.data);
-    
-    // נסה להדפיס בפורמטים שונים
-    if (error.response?.data) {
-      try {
-        console.error('📋 Data as JSON:', JSON.stringify(error.response.data, null, 2));
-      } catch {
-        console.error('📋 Data as string:', String(error.response.data));
+      const imageFile = new File([imageBlob], baseFileName, { type: 'image/png' });
+
+      console.log('✅ תמונה נוצרה:', imageFile.name, `${(imageFile.size / 1024).toFixed(1)}KB`);
+
+      // ✅ תיקון - התאמה לשרת האמיתי!
+      console.log('🆔 מידע על הקורות חיים:', {
+        resumeId: resumeId,
+        isInitialCreation: isInitialCreation,
+        isEditing: isEditingExisting,
+        existingResumeId: existingResumeData?.id
+      });
+
+      // 🎯 לוגיקה נכונה לעדכון VS יצירה
+      const hasValidResumeId = resumeId && !resumeId.toString().startsWith('local_');
+      const isEditingMode = isEditingExisting && existingResumeData?.id;
+      
+      const isUpdate = hasValidResumeId || isEditingMode;
+      const actualResumeId = resumeId || existingResumeData?.id;
+      
+      // 🔧 התאמה לשרת - נתיבים שונים וצורת שליחה שונה!
+      let method, url;
+      if (isUpdate) {
+        method = 'PUT';
+        url = `${API_BASE_URL}/resume-file/update/${actualResumeId}`; // 🔧 הנתיב הנכון!
+      } else {
+        method = 'POST';
+        url = `${API_BASE_URL}/resume-file`;
       }
+
+      // יצירת FormData עכשיו כשהכל מוגדר
+      const formDataToSend = new FormData();
+      
+      // 🔧 פורמט שונה לפי סוג הפעולה!
+      let fieldPrefix;
+      if (isUpdate) {
+        fieldPrefix = ''; // נסה בלי prefix בעדכון
+      } else {
+        fieldPrefix = ''; // גם ביצירה
+      }
+      
+      // 🚨 הוסף את ה-ID אם זה עדכון
+      if (isUpdate) {
+        formDataToSend.append('Id', actualResumeId.toString());
+        formDataToSend.append('ResumeId', actualResumeId.toString());
+      }
+      
+      // המרת כל הרשימות ל-JSON
+      const skillsJson = JSON.stringify((skills || []).map((skill: any) => ({
+        Name: skill.name || '',
+        Level: skill.level || ''
+      })));
+
+      const languageItemsJson = JSON.stringify(((formSelectorData as any).Shafot || []).map((lang: any) => ({
+        LanguageName: lang[0] || '',
+        ProficiencyLevel: lang[1] || ''
+      })));
+
+      const employmentExperienceItemsJson = JSON.stringify((experienceList || []).map((exp: any) => ({
+        Company: exp.company || '',
+        Position: exp.position || '',
+        JobType: exp.jobType || '',
+        Location: exp.location || '',
+        StartDate: exp.startDate?.year && exp.startDate?.month ? 
+                   new Date(parseInt(exp.startDate.year), getMonthNumber(exp.startDate.month), 1).toISOString() : 
+                   new Date().toISOString(),
+        EndDate: exp.currentJob ? new Date().toISOString() : 
+                 (exp.endDate?.year && exp.endDate?.month ? 
+                  new Date(parseInt(exp.endDate.year), getMonthNumber(exp.endDate.month), 1).toISOString() : 
+                  new Date().toISOString()),
+        CurrentJob: exp.currentJob || false,
+        Experience: exp.experience || ''
+      })));
+
+      const educationItemsJson = JSON.stringify((educationList || []).map((edu: any) => ({
+        Institution: edu.institution || '',
+        Field: edu.field || '',
+        StartDate: edu.startDate || '',
+        EndDate: edu.endDate || ''
+      })));
+
+      const courseItemsJson = JSON.stringify(((formSelectorData as any).Korsim || []).map((item: any) => ({
+        CourseName: item[0] || '',
+        Institution: item[1] || '',
+        Year: item[2] || ''
+      })));
+
+      const hobbyItemsJson = JSON.stringify(((formSelectorData as any).Tahbivim || []).map((item: any) => ({
+        HobbyName: item[0] || ''
+      })));
+
+      const linkItemsJson = JSON.stringify(((formSelectorData as any).Kishurim || []).map((link: any) => ({
+        Title: link[0] || '',
+        Url: link[1] || ''
+      })));
+
+      const militaryServiceItemsJson = JSON.stringify(((formSelectorData as any).SherutTzvaee || []).map((service: any) => ({
+        Unit: service[0] || '',
+        Role: service[1] || ''
+      })));
+
+      const motivationItemsJson = JSON.stringify(((formSelectorData as any).Motamishit || []).map((item: any) => ({
+        Title: 'מוטיבציה אישית',
+        Content: item[0] || ''
+      })));
+
+      const referenceItemsJson = JSON.stringify(((formSelectorData as any).Mamlitsim || []).map((ref: any) => ({
+        Name: ref[0] || '',
+        Role: ref[1] || '',
+        Email: ref[4] || '',
+        Phone: ref[3] || ''
+      })));
+
+      const volunteeringItemsJson = JSON.stringify(((formSelectorData as any).Etandvuyot || []).map((vol: any) => ({
+        Organization: vol[0] || '',
+        Role: vol[1] || '',
+        Year: vol[2] || ''
+      })));
+
+      const testItemsJson = JSON.stringify((testList || []).map((test: any) => ({
+        Name: test.name || '',
+        Score: test.score || ''
+      })));
+
+      // יצירת FormData נפרד לכל פרמטר
+      formDataToSend.append('file', imageFile);
+      
+      formDataToSend.append(`${fieldPrefix}FileName`, baseFileName);
+      formDataToSend.append(`${fieldPrefix}Template`, templateName);
+      formDataToSend.append(`${fieldPrefix}FirstName`, formData?.firstName || '');
+      formDataToSend.append(`${fieldPrefix}LastName`, formData?.lastName || '');
+      formDataToSend.append(`${fieldPrefix}Position`, formData?.position || '');
+      formDataToSend.append(`${fieldPrefix}Email`, formData?.email || 'default@email.com');
+      formDataToSend.append(`${fieldPrefix}Phone`, formData?.phone || '');
+      formDataToSend.append(`${fieldPrefix}City`, formData?.city || '');
+      formDataToSend.append(`${fieldPrefix}Country`, formData?.country || '');
+      formDataToSend.append(`${fieldPrefix}Address`, formData?.address || '');
+      formDataToSend.append(`${fieldPrefix}Citizenship`, formData?.citizenship || '');
+      formDataToSend.append(`${fieldPrefix}LicenseType`, formData?.licenseType || '');
+      formDataToSend.append(`${fieldPrefix}BirthDate`, formData?.birthDate || '');
+      formDataToSend.append(`${fieldPrefix}IdNumber`, formData?.idNumber || '');
+      formDataToSend.append(`${fieldPrefix}ProfileImage`, formData?.image || '');
+      formDataToSend.append(`${fieldPrefix}Summary`, summary || '');
+
+      // הוספת הרשימות כ-JSON
+      formDataToSend.append(`${fieldPrefix}Skills`, skillsJson);
+      formDataToSend.append(`${fieldPrefix}LanguageItems`, languageItemsJson);
+      formDataToSend.append(`${fieldPrefix}EmploymentExperienceItems`, employmentExperienceItemsJson);
+      formDataToSend.append(`${fieldPrefix}EducationItems`, educationItemsJson);
+      formDataToSend.append(`${fieldPrefix}CourseItems`, courseItemsJson);
+      formDataToSend.append(`${fieldPrefix}HobbyItems`, hobbyItemsJson);
+      formDataToSend.append(`${fieldPrefix}LinkItems`, linkItemsJson);
+      formDataToSend.append(`${fieldPrefix}MilitaryServiceItems`, militaryServiceItemsJson);
+      formDataToSend.append(`${fieldPrefix}MotivationItems`, motivationItemsJson);
+      formDataToSend.append(`${fieldPrefix}ReferenceItems`, referenceItemsJson);
+      formDataToSend.append(`${fieldPrefix}VolunteeringItems`, volunteeringItemsJson);
+      formDataToSend.append(`${fieldPrefix}TestItems`, testItemsJson);
+
+      setBlockAutoSave(false);
+
+      console.log(`🚀 ${isUpdate ? 'מעדכן' : 'יוצר'} קורות חיים בשרת...`);
+      console.log('📍 URL:', url);
+      console.log('📍 Method:', method);
+      console.log('📍 Resume ID:', actualResumeId);
+      
+      // 🔍 Debug - בואו נראה מה אנחנו שולחים
+      console.log('📋 FormData שנשלח:');
+      for (let [key, value] of formDataToSend.entries()) {
+        if (key === 'file') {
+          console.log(`${key}: [File] ${(value as File).name} (${((value as File).size / 1024).toFixed(1)}KB)`);
+        } else if (typeof value === 'string' && value.length > 100) {
+          console.log(`${key}: [JSON] ${(value as string).substring(0, 100)}...`);
+        } else {
+          console.log(`${key}: ${value}`);
+        }
+      }
+      
+      const response = await axios({
+        method: method as any,
+        url,
+        data: formDataToSend,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+        timeout: 45000
+      });
+      
+      console.log('📦 תגובה מהשרת:', response.data);
+      console.log(`✅ ${isUpdate ? 'עודכן' : 'נוצר'} בשרת בהצלחה!`);
+      
+      setBlockAutoSave(true);
+      
+      if (response.data?.id) {
+        setResumeId(response.data.id);
+        console.log('🆔 ID נקבע:', response.data.id);
+      }
+      
+      setIsInitialCreation(false);
+      return response.data;
+
+    } catch (error: any) {
+      console.error('❌ שגיאה בשמירה:', error);
+      
+      // 🔍 הדפס הכל בפירוט!
+      console.error('📍 Status:', error.response?.status);
+      console.error('📍 Status Text:', error.response?.statusText);
+      console.error('📍 Headers:', error.response?.headers);
+      console.error('📍 Data (raw):', error.response?.data);
+      console.error('📍 Data type:', typeof error.response?.data);
+      
+      // נסה להדפיס בפורמטים שונים
+      if (error.response?.data) {
+        try {
+          console.error('📋 Data as JSON:', JSON.stringify(error.response.data, null, 2));
+        } catch {
+          console.error('📋 Data as string:', String(error.response.data));
+        }
+      }
+      
+      console.error('📍 פרטי השגיאה:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        resumeId: resumeId,
+        wasUpdate: hasValidResumeId || isEditingMode
+      });
+      
+      setBlockAutoSave(true);
+      
+      if (error.response?.status === 401) {
+        console.error('🔐 בעיית הרשאה - טוקן לא תקין');
+        alert('בעיית הרשאה - נא להתחבר מחדש');
+        localStorage.removeItem('jwtToken');
+      } else if (error.response?.status === 404) {
+        console.error('🔍 הקורות חיים לא נמצאו בשרת');
+        alert('הקורות חיים נשמרו כחדשים (לא נמצא המקור)');
+      } else {
+        const errorMessage = error.response?.data?.message || 
+                            error.response?.data?.title || 
+                            error.response?.data || 
+                            error.message;
+        alert(`❌ שגיאה בשמירה: ${errorMessage}`);
+      }
+      
+      throw error;
     }
-    
-    console.error('📍 פרטי השגיאה:', {
-      message: error.message,
-      response: error.response?.data,
-      status: error.response?.status,
-      resumeId: resumeId,
-      wasUpdate: hasValidResumeId || isEditingMode
-    });
-    
-    setSaveStatus('error');
-    setBlockAutoSave(true);
-    
-    if (error.response?.status === 401) {
-      console.error('🔐 בעיית הרשאה - טוקן לא תקין');
-      alert('בעיית הרשאה - נא להתחבר מחדש');
-      localStorage.removeItem('jwtToken');
-    } else if (error.response?.status === 404) {
-      console.error('🔍 הקורות חיים לא נמצאו בשרת');
-      alert('הקורות חיים נשמרו כחדשים (לא נמצא המקור)');
-    } else {
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.title || 
-                          error.response?.data || 
-                          error.message;
-      alert(`❌ שגיאה בשמירה: ${errorMessage}`);
-    }
-    
-    throw error;
-  }
-}, [formData, summary, experienceList, educationList, testList, skills, formSelectorData, resumeId, getAuthToken, API_BASE_URL, isInitialCreation, blockAutoSave, templateName, isEditingExisting]);
+  }, [formData, summary, experienceList, educationList, testList, skills, formSelectorData, resumeId, getAuthToken, API_BASE_URL, isInitialCreation, blockAutoSave, templateName, isEditingExisting, existingResumeData]);
 
   // 🛡️ Event handlers פשוטים - ללא הגנות
   const handleFormChange = (data: any) => {
@@ -1153,19 +1141,6 @@ const saveResumeWithImage = useCallback(async (forceManual = false) => {
     );
   };
 
-  const formatEducationDate = (edu: any) => {
-    if (!edu.startDate || !edu.startDate.month || !edu.startDate.year) {
-      return "תאריך לא צוין";
-    }
-    
-    const startDate = `${edu.startDate.month} ${edu.startDate.year}`;
-    const endDate = edu.currentlyStudying ? 'לומד/ת כיום' : 
-                    (edu.endDate && edu.endDate.month && edu.endDate.year ? 
-                     `${edu.endDate.month} ${edu.endDate.year}` : 'תאריך סיום לא צוין');
-    
-    return `${startDate} - ${endDate}`;
-  };
-
   const renderResumePreview = () => {
     console.log('🎯 renderResumePreview רץ עם:', {
       hasFormData: !!formData,
@@ -1201,73 +1176,70 @@ const saveResumeWithImage = useCallback(async (forceManual = false) => {
             </div>
           )}
 
-{(formData.phone || formData.email || formData.city || formData.country || formData.citizenship || formData.birthDate || formData.idNumber || formData.licenseType) && (
-  <div className="sidebarSection">
-    <h3 className="sidebarTitle">פרטי קשר</h3>
-    {formData.phone && (
-              <div className="contactItem">
-                <svg className="contactIcon" viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
-                <span className="contactText">{formData.phone}</span>
-              </div>
-            )}
-            {formData.email && (
-              <div className="contactItem">
-                <svg className="contactIcon" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
-                <span className="contactText">{formData.email}</span>
-              </div>
-            )}
-            {formData.city && (
-              <div className="contactItem">
-                <svg className="contactIcon" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-                <span className="contactText">{formData.city}{formData.address ? `, ${formData.address}` : ''}</span>
-              </div>
-            )}
-            {formData.country && (
-              <div className="contactItem">
-                <svg className="contactIcon" viewBox="0 0 24 24">
-                  <path d="M12 2L15 8l6 1-4 4 1 6-5-3-5 3 1-6-4-4 6-1z" />
-                </svg>
-                <span className="contactText">{formData.country}</span>
-              </div>
-            )}
-            {formData.citizenship && (
-              <div className="contactItem">
-                <svg className="contactIcon" viewBox="0 0 24 24">
-                  <path d="M12 2C8.13 2 5 5.13 5 9c0 3.38 2.67 6.14 6 6.5V22h2v-6.5c3.33-.36 6-3.12 6-6.5 0-3.87-3.13-7-7-7z" />
-                </svg>
-                <span className="contactText">{formData.citizenship}</span>
-              </div>
-            )}
-            {formData.birthDate && (
-              <div className="contactItem">
-                <svg className="contactIcon" viewBox="0 0 24 24">
-                  <path d="M7 10h5v5H7zm6-7h-1V1h-2v2H6c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-3V3z" />
-                </svg>
-                <span className="contactText">{formData.birthDate}</span>
-              </div>
-            )}
-            {formData.idNumber && (
-              <div className="contactItem">
-                <svg className="contactIcon" viewBox="0 0 24 24">
-                  <path d="M12 12c2.21 0 4-1.79 4-4S14.21 4 12 4 8 5.79 8 8s1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                </svg>
-                <span className="contactText">{formData.idNumber}</span>
-              </div>
-            )}
-            {formData.licenseType && (
-              <div className="contactItem">
-                <svg className="contactIcon" viewBox="0 0 24 24">
-                  <path d="M5 16v2h14v-2H5zm7-14L5 8h14l-7-6zM7 10h10v4H7v-4z" />
-                </svg>
-                <span className="contactText">{formData.licenseType}</span>
-              </div>
-            )}
-          </div>
-          
-      
-         
+          {(formData.phone || formData.email || formData.city || formData.country || formData.citizenship || formData.birthDate || formData.idNumber || formData.licenseType) && (
+            <div className="sidebarSection">
+              <h3 className="sidebarTitle">פרטי קשר</h3>
+              {formData.phone && (
+                <div className="contactItem">
+                  <svg className="contactIcon" viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+                  <span className="contactText">{formData.phone}</span>
+                </div>
+              )}
+              {formData.email && (
+                <div className="contactItem">
+                  <svg className="contactIcon" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+                  <span className="contactText">{formData.email}</span>
+                </div>
+              )}
+              {formData.city && (
+                <div className="contactItem">
+                  <svg className="contactIcon" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                  <span className="contactText">{formData.city}{formData.address ? `, ${formData.address}` : ''}</span>
+                </div>
+              )}
+              {formData.country && (
+                <div className="contactItem">
+                  <svg className="contactIcon" viewBox="0 0 24 24">
+                    <path d="M12 2L15 8l6 1-4 4 1 6-5-3-5 3 1-6-4-4 6-1z" />
+                  </svg>
+                  <span className="contactText">{formData.country}</span>
+                </div>
+              )}
+              {formData.citizenship && (
+                <div className="contactItem">
+                  <svg className="contactIcon" viewBox="0 0 24 24">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 3.38 2.67 6.14 6 6.5V22h2v-6.5c3.33-.36 6-3.12 6-6.5 0-3.87-3.13-7-7-7z" />
+                  </svg>
+                  <span className="contactText">{formData.citizenship}</span>
+                </div>
+              )}
+              {formData.birthDate && (
+                <div className="contactItem">
+                  <svg className="contactIcon" viewBox="0 0 24 24">
+                    <path d="M7 10h5v5H7zm6-7h-1V1h-2v2H6c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-3V3z" />
+                  </svg>
+                  <span className="contactText">{formData.birthDate}</span>
+                </div>
+              )}
+              {formData.idNumber && (
+                <div className="contactItem">
+                  <svg className="contactIcon" viewBox="0 0 24 24">
+                    <path d="M12 12c2.21 0 4-1.79 4-4S14.21 4 12 4 8 5.79 8 8s1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                  </svg>
+                  <span className="contactText">{formData.idNumber}</span>
+                </div>
+              )}
+              {formData.licenseType && (
+                <div className="contactItem">
+                  <svg className="contactIcon" viewBox="0 0 24 24">
+                    <path d="M5 16v2h14v-2H5zm7-14L5 8h14l-7-6zM7 10h10v4H7v-4z" />
+                  </svg>
+                  <span className="contactText">{formData.licenseType}</span>
+                </div>
+              )}
+            </div>
           )}
- 
+   
           {skills.length > 0 && (
             <div className="sidebarSection">
               <h3 className="sidebarTitle">מיומנויות</h3>
@@ -1362,9 +1334,9 @@ const saveResumeWithImage = useCallback(async (forceManual = false) => {
                         <div className="educationField">{edu.field}</div>
                         <div className="educationInstitution">{edu.institution}</div>
                         <div className="educationDate">
-  {edu.startDate?.month && edu.startDate?.year ? `${edu.startDate.month} ${edu.startDate.year}` 
-  : 'תאריך התחלה לא צוין'} - {edu.endDate?.month && edu.endDate?.year ? `${edu.endDate.month} ${edu.endDate.year}` : 'תאריך סיום לא צוין'}
-</div>
+                          {edu.startDate?.month && edu.startDate?.year ? `${edu.startDate.month} ${edu.startDate.year}` 
+                          : 'תאריך התחלה לא צוין'} - {edu.endDate?.month && edu.endDate?.year ? `${edu.endDate.month} ${edu.endDate.year}` : 'תאריך סיום לא צוין'}
+                        </div>
                     </div>
                  )
               ))}

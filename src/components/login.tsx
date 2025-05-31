@@ -2,24 +2,34 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TextField, Button, Container, Typography, Box, Divider } from '@mui/material';
 
+interface FormData {
+  email: string;
+  password: string;
+}
+
+interface FormErrors {
+  email?: string;
+  password?: string;
+}
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-const Login = () => {
+
+const Login: React.FC = () => {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     email: '',
     password: ''
   });
-  const [errors, setErrors] = useState({});
-  const [loginError, setLoginError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [loginError, setLoginError] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const validateEmail = (email) => {
+  const validateEmail = (email: string): boolean => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return re.test(email);
   };
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -27,7 +37,7 @@ const Login = () => {
     }));
     
     // Clear error when user starts typing
-    if (errors[name]) {
+    if (errors[name as keyof FormErrors]) {
       setErrors(prev => ({
         ...prev,
         [name]: ''
@@ -39,7 +49,7 @@ const Login = () => {
     setLoginError('');
     
     // Validation
-    const newErrors = {};
+    const newErrors: FormErrors = {};
     if (!formData.email) {
       newErrors.email = 'האימייל נדרש';
     } else if (!validateEmail(formData.email)) {
@@ -144,13 +154,17 @@ const Login = () => {
         setLoginError(errorMessage);
       }
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("❌ Network/Fetch Error:", error);
       
-      if (error.name === 'TypeError' && error.message.includes('fetch')) {
-        setLoginError("לא ניתן להתחבר לשרת. בדוק שהשרת פועל.");
+      if (error instanceof Error) {
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+          setLoginError("לא ניתן להתחבר לשרת. בדוק שהשרת פועל.");
+        } else {
+          setLoginError("שגיאת רשת. אנא בדוק את החיבור לאינטרנט.");
+        }
       } else {
-        setLoginError("שגיאת רשת. אנא בדוק את החיבור לאינטרנט.");
+        setLoginError("שגיאה לא צפויה");
       }
     } finally {
       setIsLoading(false);
@@ -175,32 +189,6 @@ const Login = () => {
   const handleGoToRegister = () => {
     navigate('/register');
   };
-
-  // פונקציה לבדיקת הדטה בשרת
-  // const testServerConnection = async () => {
-  //   try {
-  //     console.log('🔍 Testing server connection...');
-  //     const response = await fetch("http://localhost:5227/api/User", {
-  //       method: 'GET',
-  //       headers: {
-  //         'Content-Type': 'application/json',
-  //       },
-  //     });
-  //     console.log('🔍 Server test response:', response.status);
-  //     if (response.ok) {
-  //       console.log('✅ Server is accessible');
-  //     } else {
-  //       console.log('⚠️ Server responded with status:', response.status);
-  //     }
-  //   } catch (error) {
-  //     console.error('❌ Server connection test failed:', error);
-  //   }
-  // };
-
-  // // הוסף כפתור בדיקה בטופס (זמני)
-  // const handleTestConnection = () => {
-  //   testServerConnection();
-  // };
 
   return (
     <Box
@@ -339,22 +327,6 @@ const Login = () => {
           <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#374151', textAlign: 'center', mb: 3 }}>
             התחברות
           </Typography>
-
-          {/* Test Connection Button (זמני לדיבוג) */}
-          <Button
-            onClick={handleTestConnection}
-            fullWidth
-            variant="outlined"
-            sx={{
-              mb: 2,
-              py: 1,
-              borderColor: '#e5e7eb',
-              color: '#6b7280',
-              fontSize: '0.875rem'
-            }}
-          >
-            🔍 בדוק חיבור לשרת (דיבוג)
-          </Button>
 
           {/* Google Login Button */}
           <Button

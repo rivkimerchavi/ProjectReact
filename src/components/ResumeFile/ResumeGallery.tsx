@@ -1,18 +1,32 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Edit, Trash2, Plus, AlertCircle, Loader, RefreshCw, Download, Share2, FileText, Sparkles, Clock, CheckCircle2, MoreVertical } from 'lucide-react';
+import { Edit, Trash2, Plus, AlertCircle, Loader, RefreshCw, Sparkles } from 'lucide-react';
 
-const ResumeGallery = ({ onEditResume }) => {
-  const [resumes, setResumes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [deleteLoading, setDeleteLoading] = useState(null);
-  const [coverLetterLoading, setCoverLetterLoading] = useState(null);
-  const [coverLetterModal, setCoverLetterModal] = useState(null);
-  const [jobDescription, setJobDescription] = useState('');
-  const [hoveredCard, setHoveredCard] = useState(null);
+interface Resume {
+  id: string;
+  fileName: string;
+  path?: string;
+  fileUrl?: string;
+  image?: string;
+  profileImage?: string;
+  createdAt?: string;
+}
+
+interface ResumeGalleryProps {
+  onEditResume: (resumeData: any) => void;
+}
+
+const ResumeGallery: React.FC<ResumeGalleryProps> = ({ onEditResume }) => {
+  const [resumes, setResumes] = useState<Resume[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
+  const [coverLetterLoading, setCoverLetterLoading] = useState<string | null>(null);
+  const [coverLetterModal, setCoverLetterModal] = useState<Resume | null>(null);
+  const [jobDescription, setJobDescription] = useState<string>('');
   
   // קונפיגורציה
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+  
   // פונקציה לקבלת טוקן
   const getAuthToken = useCallback(() => {
     return localStorage.getItem('jwtToken') || 
@@ -63,7 +77,7 @@ const ResumeGallery = ({ onEditResume }) => {
         console.log('📅 createdAt:', data[0].createdAt);
         
         // בדיקה של כל הרשומות
-        data.forEach((resume, index) => {
+        data.forEach((resume: Resume, index: number) => {
           console.log(`📝 רשומה ${index + 1}:`, {
             id: resume.id,
             fileName: resume.fileName,
@@ -81,10 +95,10 @@ const ResumeGallery = ({ onEditResume }) => {
       
       setResumes(data || []);
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ שגיאה בטעינת קורות חיים:', error);
       
-      if (error.message === 'UNAUTHORIZED') {
+      if (error instanceof Error && error.message === 'UNAUTHORIZED') {
         setError('בעיית הרשאה - נא להתחבר מחדש');
         localStorage.removeItem('jwtToken');
       } else {
@@ -96,7 +110,7 @@ const ResumeGallery = ({ onEditResume }) => {
   }, [getAuthToken, API_BASE_URL]);
 
   // יצירת מכתב מקדים
-  const generateCoverLetter = useCallback(async (resumeId, resumeFileName) => {
+  const generateCoverLetter = useCallback(async (resumeId: string, resumeFileName: string) => {
     if (!jobDescription.trim()) {
       alert('נא הוסף תיאור משרה');
       return;
@@ -147,7 +161,7 @@ const ResumeGallery = ({ onEditResume }) => {
   }, [getAuthToken, API_BASE_URL, jobDescription]);
 
   // מחיקת קורות חיים
-  const deleteResume = useCallback(async (resumeId, fileName, event) => {
+  const deleteResume = useCallback(async (resumeId: string, fileName: string, event?: React.MouseEvent) => {
     if (event) {
       event.stopPropagation();
       event.preventDefault();
@@ -189,7 +203,7 @@ const ResumeGallery = ({ onEditResume }) => {
   }, [getAuthToken, API_BASE_URL]);
 
   // עריכת קורות חיים
-  const editResume = useCallback(async (resumeId, event) => {
+  const editResume = useCallback(async (resumeId: string, event?: React.MouseEvent) => {
     if (event) {
       event.stopPropagation();
       event.preventDefault();
@@ -233,7 +247,7 @@ const ResumeGallery = ({ onEditResume }) => {
   }, [onEditResume]);
 
   // פונקציה לקבלת URL של התמונה מ-AWS
-  const getImageUrl = useCallback((resume) => {
+  const getImageUrl = useCallback((resume: Resume) => {
     console.log('🔍 getImageUrl רץ עבור resume:', resume);
     
     const imageUrl = resume.path || resume.fileUrl || resume.image || resume.profileImage;
@@ -369,15 +383,6 @@ const ResumeGallery = ({ onEditResume }) => {
           }}>
             ResumeBuilder
           </span>
-          <div style={{
-            backgroundColor: '#4285f4',
-            color: 'white',
-            padding: '2px 6px',
-            borderRadius: '4px',
-            fontSize: '12px'
-          }}>
-            <FileText size={12} />
-          </div>
         </div>
 
         {/* Right side - Logout button only */}
@@ -403,12 +408,12 @@ const ResumeGallery = ({ onEditResume }) => {
             transition: 'all 0.2s ease'
           }}
           onMouseEnter={(e) => {
-            e.target.style.backgroundColor = '#4285f4';
-            e.target.style.color = 'white';
+            (e.target as HTMLButtonElement).style.backgroundColor = '#4285f4';
+            (e.target as HTMLButtonElement).style.color = 'white';
           }}
           onMouseLeave={(e) => {
-            e.target.style.backgroundColor = 'transparent';
-            e.target.style.color = '#4285f4';
+            (e.target as HTMLButtonElement).style.backgroundColor = 'transparent';
+            (e.target as HTMLButtonElement).style.color = '#4285f4';
           }}
         >
           התנתק/י
@@ -430,8 +435,6 @@ const ResumeGallery = ({ onEditResume }) => {
           display: 'flex',
           flexDirection: 'column'
         }}>
-          {/* Create new button - הוסר מכאן */}
-
           {/* Navigation */}
           <div style={{ marginBottom: '32px' }}>
             <div style={{
@@ -574,8 +577,6 @@ const ResumeGallery = ({ onEditResume }) => {
                       gap: '16px',
                       position: 'relative'
                     }}
-                    onMouseEnter={() => setHoveredCard(resume.id)}
-                    onMouseLeave={() => setHoveredCard(null)}
                   >
                     {/* Document Preview - תמונה אמיתית מ-AWS */}
                     <div style={{
@@ -603,8 +604,8 @@ const ResumeGallery = ({ onEditResume }) => {
                               display: 'block'
                             }}
                             onError={(e) => {
-                              e.target.style.display = 'none';
-                              const placeholder = e.target.parentNode.querySelector('.placeholder');
+                              (e.target as HTMLImageElement).style.display = 'none';
+                              const placeholder = (e.target as HTMLImageElement).parentNode?.querySelector('.placeholder') as HTMLElement;
                               if (placeholder) placeholder.style.display = 'flex';
                             }}
                           />
@@ -701,10 +702,10 @@ const ResumeGallery = ({ onEditResume }) => {
                           minWidth: '80px'
                         }}
                         onMouseEnter={(e) => {
-                          e.target.style.backgroundColor = 'rgba(0,0,0,0.05)';
+                          (e.target as HTMLButtonElement).style.backgroundColor = 'rgba(0,0,0,0.05)';
                         }}
                         onMouseLeave={(e) => {
-                          e.target.style.backgroundColor = 'transparent';
+                          (e.target as HTMLButtonElement).style.backgroundColor = 'transparent';
                         }}
                         title="עריכה"
                       >
@@ -730,13 +731,15 @@ const ResumeGallery = ({ onEditResume }) => {
                           minWidth: '80px'
                         }}
                         onMouseEnter={(e) => {
-                          if (!e.target.disabled) {
-                            e.target.style.backgroundColor = 'rgba(0,0,0,0.05)';
+                          const target = e.target as HTMLButtonElement;
+                          if (!target.disabled) {
+                            target.style.backgroundColor = 'rgba(0,0,0,0.05)';
                           }
                         }}
                         onMouseLeave={(e) => {
-                          if (!e.target.disabled) {
-                            e.target.style.backgroundColor = 'transparent';
+                          const target = e.target as HTMLButtonElement;
+                          if (!target.disabled) {
+                            target.style.backgroundColor = 'transparent';
                           }
                         }}
                         title="מחיקה"
@@ -772,10 +775,10 @@ const ResumeGallery = ({ onEditResume }) => {
                           minWidth: '80px'
                         }}
                         onMouseEnter={(e) => {
-                          e.target.style.backgroundColor = 'rgba(0,0,0,0.05)';
+                          (e.target as HTMLButtonElement).style.backgroundColor = 'rgba(0,0,0,0.05)';
                         }}
                         onMouseLeave={(e) => {
-                          e.target.style.backgroundColor = 'transparent';
+                          (e.target as HTMLButtonElement).style.backgroundColor = 'transparent';
                         }}
                         title="יצירת מכתב מקדים"
                       >
@@ -888,8 +891,8 @@ const ResumeGallery = ({ onEditResume }) => {
                   transition: 'border-color 0.2s ease',
                   boxSizing: 'border-box'
                 }}
-                onFocus={(e) => e.target.style.borderColor = '#4285f4'}
-                onBlur={(e) => e.target.style.borderColor = '#dadce0'}
+                onFocus={(e) => (e.target as HTMLTextAreaElement).style.borderColor = '#4285f4'}
+                onBlur={(e) => (e.target as HTMLTextAreaElement).style.borderColor = '#dadce0'}
               />
             </div>
 

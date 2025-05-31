@@ -1,5 +1,3 @@
-"use client"
-
 import React, { useState, useEffect, useRef } from "react"
 import {
   Box,
@@ -69,8 +67,6 @@ export default function FormSelector({
 }: FormSelectorProps) {
   console.log('🏃‍♂️ FormSelector התחיל עם initialData:', initialData);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [selectedForm, setSelectedForm] = useState("")
   const [formValues, setFormValues] = useState<Record<string, string[][]>>({})
   const [activeForm, setActiveForm] = useState<string | null>(null)
   const [allFormData, setAllFormData] = useState<Record<string, string[][]>>({})
@@ -139,21 +135,6 @@ export default function FormSelector({
 
   const handleButtonClick = (form: string) => {
     setActiveForm((prev) => (prev === form ? null : form))
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const getFormLabel = (key: string): string => {
-    const labels: Record<string, string> = {
-      Shafot: "שפות",
-      SherutTzvaee: "שירות צבאי",
-      Korsim: "קורסים",
-      Etandvuyot: "התנדבויות",
-      Kishurim: "קישורים",
-      Tahbivim: "תחביבים",
-      Mamlitsim: "ממליצים",
-      Motamishit: "מוטיבציה אישית",
-    }
-    return labels[key] || key
   }
 
   const formButtons: FormButton[] = [

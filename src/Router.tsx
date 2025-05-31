@@ -1,13 +1,11 @@
 import { createBrowserRouter } from "react-router-dom";
-import AppLayout from "./components/applayout";
 import Login from "./components/login";
 import Register from "./components/register";
-
 import Auth from "./components/auth";
 import TemplateList from "./components/templateList";
-import TemplateForStyle from "./components/templateForStyle";
 import TemplateEditor from "./components/templateEditor";
 import ResumeGalleryPage from "./components/ResumeFile/ResumeGalleryPage";
+import AppLayout from "./components/AppLayout";
 
 
 
