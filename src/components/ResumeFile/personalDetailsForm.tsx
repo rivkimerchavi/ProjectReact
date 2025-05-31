@@ -1,9 +1,37 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-const PersonalDetailsForm = ({ onFormChange, initialData }) => {
+// הגדרת טיפוסים
+interface FormData {
+  position: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  city: string;
+  address: string;
+  country: string;
+  citizenship: string;
+  licenseType: string;
+  birthDate: string;
+  idNumber: string;
+}
+
+interface FormDataWithImage extends FormData {
+  image: string | null;
+}
+
+interface PersonalDetailsFormProps {
+  onFormChange: (data: FormDataWithImage) => void;
+  initialData?: Partial<FormDataWithImage>;
+  autoSave?: boolean;
+  blockAutoSave?: boolean;
+  manualSaveOnly?: boolean;
+}
+
+const PersonalDetailsForm: React.FC<PersonalDetailsFormProps> = ({ onFormChange, initialData }) => {
   console.log('🏃‍♂️ PersonalDetailsForm התחיל עם initialData:', initialData);
   
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     position: '',
     firstName: '',
     lastName: '',
@@ -18,7 +46,7 @@ const PersonalDetailsForm = ({ onFormChange, initialData }) => {
     idNumber: '',
   });
 
-  const [image, setImage] = useState(null);
+  const [image, setImage] = useState<string | null>(null);
   const [showAdditionalDetails, setShowAdditionalDetails] = useState(false);
   
   // 🚨 הוספת flag למניעת לולאה
@@ -66,19 +94,19 @@ const PersonalDetailsForm = ({ onFormChange, initialData }) => {
     }
   }, [formData, image, isInitialLoad]);
 
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     console.log(`📝 שדה ${name} השתנה ל: ${value}`);
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleImageChange = (e) => {
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
         console.log('📸 תמונה חדשה נטענה');
-        setImage(reader.result);
+        setImage(reader.result as string);
       };
       reader.readAsDataURL(file);
     }

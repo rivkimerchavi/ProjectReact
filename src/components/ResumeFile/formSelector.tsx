@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import {
   Box,
   Button,
@@ -31,23 +31,47 @@ import DeleteIcon from "@mui/icons-material/Delete"
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline"
 import CheckCircleIcon from "@mui/icons-material/CheckCircle"
 
+// הגדרת טיפוסים
+interface FormSelectorProps {
+  onFormDataChange: (formType: string, data: string[][]) => void;
+  initialData?: Record<string, string[][]>;
+  autoSave?: boolean;
+  blockAutoSave?: boolean;
+  manualSaveOnly?: boolean;
+}
+
+interface FormButton {
+  key: string;
+  label: string;
+  icon: React.ReactElement;
+}
+
+interface FormContentProps {
+  formType: string;
+  initialData: string[][];
+  onDataChange: (formType: string, data: string[][]) => void;
+}
+
+interface DynamicFormProps {
+  title: string;
+  fields: string[];
+  formType: string;
+  initialData: string[][];
+  onDataChange: (formType: string, data: string[][]) => void;
+}
+
 export default function FormSelector({
   onFormDataChange,
   initialData = {},
   autoSave = true,
   blockAutoSave = false,
   manualSaveOnly = false
-}: {
-  onFormDataChange: (formType: string, data: string[][]) => void;
-  initialData?: Record<string, string[][]>;
-  autoSave?: boolean;
-  blockAutoSave?: boolean;
-  manualSaveOnly?: boolean;
-}) {
+}: FormSelectorProps) {
   console.log('🏃‍♂️ FormSelector התחיל עם initialData:', initialData);
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [selectedForm, setSelectedForm] = useState("")
-  const [formValues, setFormValues] = useState<{ [key: string]: string[][] }>({})
+  const [formValues, setFormValues] = useState<Record<string, string[][]>>({})
   const [activeForm, setActiveForm] = useState<string | null>(null)
   const [allFormData, setAllFormData] = useState<Record<string, string[][]>>({})
   const [formCounts, setFormCounts] = useState<Record<string, number>>({})
@@ -74,7 +98,7 @@ export default function FormSelector({
         setAllFormData(initialData);
         
         // עדכון מונים
-        const counts = {};
+        const counts: Record<string, number> = {};
         Object.entries(initialData).forEach(([key, data]) => {
           counts[key] = data ? data.length : 0;
         });
@@ -117,6 +141,7 @@ export default function FormSelector({
     setActiveForm((prev) => (prev === form ? null : form))
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const getFormLabel = (key: string): string => {
     const labels: Record<string, string> = {
       Shafot: "שפות",
@@ -131,7 +156,7 @@ export default function FormSelector({
     return labels[key] || key
   }
 
-  const formButtons = [
+  const formButtons: FormButton[] = [
     { key: "Shafot", label: "שפות", icon: <SchoolIcon /> },
     { key: "SherutTzvaee", label: "שירות צבאי", icon: <MilitaryTechIcon /> },
     { key: "Korsim", label: "קורסים", icon: <MenuBookIcon /> },
@@ -306,14 +331,10 @@ export default function FormSelector({
 
 // ----------- קומפוננטה להצגת טופס בהתאם לסוג -----------
 
-const FormContent = ({
+const FormContent: React.FC<FormContentProps> = ({
   formType,
   initialData,
   onDataChange,
-}: {
-  formType: string
-  initialData: string[][]
-  onDataChange: (formType: string, data: string[][]) => void
 }) => {
   const formFields: Record<string, string[]> = {
     Shafot: ["שם השפה", "רמת השפה"],
@@ -328,17 +349,18 @@ const FormContent = ({
 
   if (!formFields[formType]) return null
 
-  const formTitle =
-    {
-      Shafot: "שפות",
-      SherutTzvaee: "שירות צבאי",
-      Korsim: "קורסים",
-      Etandvuyot: "התנדבויות",
-      Kishurim: "קישורים",
-      Tahbivim: "תחביבים",
-      Mamlitsim: "ממליצים",
-      Motamishit: "מוטיבציה אישית",
-    }[formType] || formType
+  const formTitles: Record<string, string> = {
+    Shafot: "שפות",
+    SherutTzvaee: "שירות צבאי",
+    Korsim: "קורסים",
+    Etandvuyot: "התנדבויות",
+    Kishurim: "קישורים",
+    Tahbivim: "תחביבים",
+    Mamlitsim: "ממליצים",
+    Motamishit: "מוטיבציה אישית",
+  }
+
+  const formTitle = formTitles[formType] || formType
 
   return (
     <DynamicForm
@@ -353,18 +375,12 @@ const FormContent = ({
 
 // ----------- קומפוננטה של טופס דינמי -----------
 
-const DynamicForm = ({
+const DynamicForm: React.FC<DynamicFormProps> = ({
   title,
   fields,
   formType,
   initialData,
   onDataChange,
-}: {
-  title: string
-  fields: string[]
-  formType: string
-  initialData: string[][]
-  onDataChange: (formType: string, data: string[][]) => void
 }) => {
   const [entries, setEntries] = useState<string[][]>(initialData.length > 0 ? initialData : [fields.map(() => "")])
   const [successMessage, setSuccessMessage] = useState<boolean>(false)

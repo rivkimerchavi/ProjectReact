@@ -1,6 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-const SkillSection = ({ 
+// הגדרת טיפוסים
+interface Skill {
+  name: string;
+  level: string;
+}
+
+interface LevelOption {
+  value: string;
+  label: string;
+}
+
+interface SkillSectionProps {
+  onSkillsChange: (skills: Skill[]) => void;
+  initialSkills?: Skill[];
+  autoSave?: boolean;
+  blockAutoSave?: boolean;
+  manualSaveOnly?: boolean;
+}
+
+const SkillSection: React.FC<SkillSectionProps> = ({ 
   onSkillsChange, 
   initialSkills = [],
   autoSave = true,
@@ -9,8 +28,8 @@ const SkillSection = ({
 }) => {
   console.log('🏃‍♂️ SkillSection התחיל עם initialSkills:', initialSkills);
 
-  const [skills, setSkills] = useState([]);
-  const [currentSkill, setCurrentSkill] = useState({ name: '', level: '' });
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [currentSkill, setCurrentSkill] = useState<Skill>({ name: '', level: '' });
   const [showForm, setShowForm] = useState(false);
   const [editingIndex, setEditingIndex] = useState(-1);
 
@@ -47,7 +66,7 @@ const SkillSection = ({
     }
   }, [skills, isInitialLoad, blockAutoSave, autoSave, manualSaveOnly]);
 
-  const handleInputChange = (field, value) => {
+  const handleInputChange = (field: keyof Skill, value: string) => {
     console.log(`📝 מיומנות - שדה ${field} השתנה ל:`, value);
     setCurrentSkill(prev => ({ ...prev, [field]: value }));
   };
@@ -55,7 +74,7 @@ const SkillSection = ({
   const handleAddSkill = () => {
     if (!currentSkill.name.trim()) return;
 
-    let updatedSkills;
+    let updatedSkills: Skill[];
     if (editingIndex >= 0) {
       // עדכון מיומנות קיימת
       updatedSkills = [...skills];
@@ -73,7 +92,7 @@ const SkillSection = ({
     setShowForm(false);
   };
 
-  const handleEditSkill = (index) => {
+  const handleEditSkill = (index: number) => {
     const skillToEdit = skills[index];
     console.log('✏️ ערוך מיומנות:', skillToEdit);
     setCurrentSkill(skillToEdit);
@@ -81,7 +100,7 @@ const SkillSection = ({
     setShowForm(true);
   };
 
-  const handleDeleteSkill = (index) => {
+  const handleDeleteSkill = (index: number) => {
     const updatedSkills = skills.filter((_, i) => i !== index);
     console.log('🗑️ מחק מיומנות:', index);
     setSkills(updatedSkills);
@@ -93,7 +112,7 @@ const SkillSection = ({
     setEditingIndex(-1);
   };
 
-  const levelOptions = [
+  const levelOptions: LevelOption[] = [
     { value: 'גבוהה', label: 'גבוהה' },
     { value: 'בינונית', label: 'בינונית' },
     { value: 'נמוכה', label: 'נמוכה' },
@@ -265,12 +284,12 @@ const SkillSection = ({
               outline: 'none'
             }}
             onMouseOver={(e) => {
-              e.target.style.backgroundColor = 'rgba(25, 118, 210, 0.08)';
-              e.target.style.borderColor = '#1976d2';
+              (e.target as HTMLButtonElement).style.backgroundColor = 'rgba(25, 118, 210, 0.08)';
+              (e.target as HTMLButtonElement).style.borderColor = '#1976d2';
             }}
             onMouseOut={(e) => {
-              e.target.style.backgroundColor = 'rgba(25, 118, 210, 0.04)';
-              e.target.style.borderColor = 'rgba(25, 118, 210, 0.5)';
+              (e.target as HTMLButtonElement).style.backgroundColor = 'rgba(25, 118, 210, 0.04)';
+              (e.target as HTMLButtonElement).style.borderColor = 'rgba(25, 118, 210, 0.5)';
             }}
           >
             <svg style={{ width: '16px', height: '16px' }} viewBox="0 0 24 24" fill="currentColor">
@@ -310,8 +329,8 @@ const SkillSection = ({
                   direction: 'rtl',
                   textAlign: 'right'
                 }}
-                onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-                onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+                onFocus={(e) => (e.target as HTMLInputElement).style.borderColor = '#3b82f6'}
+                onBlur={(e) => (e.target as HTMLInputElement).style.borderColor = '#e0e0e0'}
               />
             </div>
 
@@ -339,8 +358,8 @@ const SkillSection = ({
                   textAlign: 'right',
                   backgroundColor: 'white'
                 }}
-                onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-                onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+                onFocus={(e) => (e.target as HTMLSelectElement).style.borderColor = '#3b82f6'}
+                onBlur={(e) => (e.target as HTMLSelectElement).style.borderColor = '#e0e0e0'}
               >
                 <option value="">בחר רמת מיומנות</option>
                 {levelOptions.map(option => (

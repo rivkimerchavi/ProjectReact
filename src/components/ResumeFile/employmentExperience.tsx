@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Box,
   Button,
@@ -41,6 +41,7 @@ import {
 } from "@mui/icons-material";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 
+// הגדרת טיפוסים
 interface ExperienceData {
   company: string;
   position: string;
@@ -50,7 +51,33 @@ interface ExperienceData {
   endDate: { month: string; year: string };
   currentJob: boolean;
   experience: string;
-  formatting?: any;
+  formatting?: TextFormat;
+}
+
+interface TextFormat {
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
+  align: string;
+}
+
+interface SearchResult {
+  type: string;
+  text: string;
+  profession?: string;
+}
+
+interface EmploymentExperienceProps {
+  onFormChange?: (data: any) => void;
+  onExperienceListChange?: (experiences: ExperienceData[]) => void;
+  initialExperiences?: ExperienceData[];
+  autoSave?: boolean;
+  blockAutoSave?: boolean;
+  manualSaveOnly?: boolean;
+}
+
+interface HelpText {
+  [key: string]: string;
 }
 
 const initialExperienceData: ExperienceData = {
@@ -65,7 +92,7 @@ const initialExperienceData: ExperienceData = {
 };
 
 // מילון מקצועות ומשפטים
-const professionDescriptions = {
+const professionDescriptions: Record<string, string[]> = {
   "מתכנת/ת": [
     "- תכנון והובלת פרויקטים חדשים, עמידה בלוחות זמנים עמוסים.",
     "- פיתוח ותחזוקת תוכנה בסביבת עבודה דינמית ומהירה.",
@@ -95,7 +122,7 @@ const professionDescriptions = {
 };
 
 // משפטים כלליים
-const generalDescriptions = [
+const generalDescriptions: string[] = [
   "- תכנון והובלת פרויקטים חדשים, עמידה בלוחות זמנים עמוסים.",
   "- מתן תמיכה טכנית ללקוחות, עבודה מול מערכות CRM.",
   "- ניהול צוות והכשרת עובדים חדשים בחברה.",
@@ -105,7 +132,7 @@ const generalDescriptions = [
 ];
 
 // עזרה והסברים על השדות
-const helpText = {
+const helpText: HelpText = {
   main: "בחלק זה תוכל/י להוסיף את הניסיון התעסוקתי שלך. הוסף/י את המשרות האחרונות שלך כשהאחרונה בזמן תופיע ראשונה. מומלץ לכלול 2-3 משרות אחרונות.",
   position: "הכנס/י את התפקיד הרשמי שלך. לדוגמה: 'מנהל/ת פרויקטים', 'מפתח/ת תוכנה'.",
   company: "שם החברה או הארגון בו עבדת.",
@@ -218,31 +245,26 @@ const theme = createTheme({
   },
 });
 
-export default function EmploymentExperience({ 
+const EmploymentExperience: React.FC<EmploymentExperienceProps> = ({ 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onFormChange, 
   onExperienceListChange,
   initialExperiences = [],
   autoSave = true,
   blockAutoSave = false,
   manualSaveOnly = false
-}: { 
-  onFormChange?: (data: any) => void;
-  onExperienceListChange?: (experiences: ExperienceData[]) => void;
-  initialExperiences?: ExperienceData[];
-  autoSave?: boolean;
-  blockAutoSave?: boolean;
-  manualSaveOnly?: boolean;
-}) {
+}) => {
   console.log('🏃‍♂️ EmploymentExperience התחיל עם initialExperiences:', initialExperiences);
 
   const [experienceData, setExperienceData] = useState<ExperienceData>(initialExperienceData);
   const [showForm, setShowForm] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isExpanded, setIsExpanded] = useState(true);
   const [experiences, setExperiences] = useState<ExperienceData[]>([]);
   const [editingIndex, setEditingIndex] = useState(-1);
   
   // מצב עיצוב טקסט
-  const [textFormat, setTextFormat] = useState({
+  const [textFormat, setTextFormat] = useState<TextFormat>({
     bold: false,
     italic: false,
     underline: false,
@@ -253,7 +275,7 @@ export default function EmploymentExperience({
   const [helpAnchorEl, setHelpAnchorEl] = useState<null | HTMLElement>(null);
   const [showSuggestionsBox, setShowSuggestionsBox] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<Array<{type: string, text: string, profession?: string}>>([]);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
 
   // 🔧 טעינת נתונים קיימים
   const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -311,7 +333,7 @@ export default function EmploymentExperience({
     );
     
     if (matchingProfessions.length > 0) {
-      const results: Array<{type: string, text: string, profession?: string}> = [];
+      const results: SearchResult[] = [];
       
       matchingProfessions.forEach(profession => {
         results.push({
@@ -319,7 +341,7 @@ export default function EmploymentExperience({
           text: profession
         });
         
-        professionDescriptions[profession].forEach(description => {
+        professionDescriptions[profession].forEach((description: string) => {
           results.push({
             type: 'description',
             text: description,
@@ -343,14 +365,15 @@ export default function EmploymentExperience({
   };
   
   // פונקציות עיצוב
-  const toggleFormat = (format: 'bold' | 'italic' | 'underline') => {
+  const toggleFormat = (format: keyof TextFormat) => {
+    if (format === 'align') return; // align is not boolean
     setTextFormat(prev => ({
       ...prev,
       [format]: !prev[format]
     }));
   };
   
-  const setAlignment = (alignment: 'right' | 'center' | 'left' | 'justify') => {
+  const setAlignment = (alignment: string) => {
     setTextFormat(prev => ({
       ...prev,
       align: alignment
@@ -372,7 +395,7 @@ export default function EmploymentExperience({
   };
 
   const handleAddExperience = () => {
-    let updatedExperiences;
+    let updatedExperiences: ExperienceData[];
     
     // שומר את העיצוב הנוכחי עם הניסיון
     const experienceWithFormatting = {
@@ -687,6 +710,7 @@ export default function EmploymentExperience({
                         >
                           <MenuItem value="" disabled><em>בחר סוג משרה</em></MenuItem>
                           <MenuItem value="משרה מלאה">משרה מלאה</MenuItem>
+                          <MenuItem value="משרה מלאה">משרה מלאה</MenuItem>
                           <MenuItem value="משרה חלקית">משרה חלקית</MenuItem>
                           <MenuItem value="פרילנס">פרילנס</MenuItem>
                         </Select>
@@ -977,14 +1001,14 @@ export default function EmploymentExperience({
                             sx: { 
                               p: 2, 
                               minHeight: 100, 
-                              textAlign: textFormat.align,
+                              textAlign: textFormat.align as React.CSSProperties['textAlign'],
                               fontWeight: textFormat.bold ? 'bold' : 'normal',
                               fontStyle: textFormat.italic ? 'italic' : 'normal',
                               textDecoration: textFormat.underline ? 'underline' : 'none',
                               direction: 'rtl',
                               whiteSpace: 'pre-wrap',
                               '& textarea': {
-                                textAlign: textFormat.align,
+                                textAlign: textFormat.align as React.CSSProperties['textAlign'],
                                 fontWeight: textFormat.bold ? 'bold' : 'normal',
                                 fontStyle: textFormat.italic ? 'italic' : 'normal',
                                 textDecoration: textFormat.underline ? 'underline' : 'none',
@@ -994,7 +1018,7 @@ export default function EmploymentExperience({
                           }}
                           inputProps={{
                             style: {
-                              textAlign: textFormat.align,
+                              textAlign: textFormat.align as React.CSSProperties['textAlign'],
                               fontWeight: textFormat.bold ? 'bold' : 'normal',
                               fontStyle: textFormat.italic ? 'italic' : 'normal',
                               textDecoration: textFormat.underline ? 'underline' : 'none',
@@ -1117,8 +1141,8 @@ export default function EmploymentExperience({
                                           backgroundColor: 'white',
                                           direction: 'rtl'
                                         }}
-                                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f6f6f6'}
-                                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                                        onMouseOver={(e) => (e.currentTarget as HTMLDivElement).style.backgroundColor = '#f6f6f6'}
+                                        onMouseOut={(e) => (e.currentTarget as HTMLDivElement).style.backgroundColor = 'white'}
                                       >
                                         <button
                                           onClick={() => handleDescriptionClick(result.text)}
@@ -1138,8 +1162,8 @@ export default function EmploymentExperience({
                                             cursor: 'pointer',
                                             outline: 'none'
                                           }}
-                                          onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#3367d6'}
-                                          onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#4285f4'}
+                                          onMouseOver={(e) => (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#3367d6'}
+                                          onMouseOut={(e) => (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#4285f4'}
                                         >
                                           <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
                                             <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
@@ -1199,8 +1223,8 @@ export default function EmploymentExperience({
                                       backgroundColor: 'white',
                                       direction: 'rtl'
                                     }}
-                                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f6f6f6'}
-                                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                                    onMouseOver={(e) => (e.currentTarget as HTMLDivElement).style.backgroundColor = '#f6f6f6'}
+                                    onMouseOut={(e) => (e.currentTarget as HTMLDivElement).style.backgroundColor = 'white'}
                                   >
                                     <button
                                       onClick={() => handleDescriptionClick(desc)}
@@ -1220,8 +1244,8 @@ export default function EmploymentExperience({
                                         cursor: 'pointer',
                                         outline: 'none'
                                       }}
-                                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#3367d6'}
-                                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#4285f4'}
+                                      onMouseOver={(e) => (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#3367d6'}
+                                      onMouseOut={(e) => (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#4285f4'}
                                     >
                                       <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
                                         <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
@@ -1279,4 +1303,6 @@ export default function EmploymentExperience({
       </div>
     </ThemeProvider>
   );
-}
+};
+
+export default EmploymentExperience;

@@ -1,7 +1,29 @@
 import React, { useState, useEffect, useRef } from 'react';
 
+// הגדרת טיפוסים
+interface SearchResult {
+  type: 'category' | 'description';
+  text: string;
+  profession?: string;
+}
+
+interface TextFormat {
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
+  align: string;
+}
+
+interface ResumeDescriptionGeneratorProps {
+  onSummaryChange: (summary: string) => void;
+  initialSummary?: string;
+  autoSave?: boolean;
+  blockAutoSave?: boolean;
+  manualSaveOnly?: boolean;
+}
+
 // מילון מורחב של מקצועות ומשפטים
-const professionDescriptions = {
+const professionDescriptions: Record<string, string[]> = {
   "מתכנת": [
     "מתכנת מחשבים מנוסה מיומן בפיתוח מלא, פיתוח אתרים, הנדסת תוכנה ועיצוב מסדי נתונים.",
     "שליטה גבוהה בשפות תכנות ++C, Java ו-Python. מיומן באיתור באגים ופתרון בעיות תוכנה מורכבות.",
@@ -43,7 +65,7 @@ const professionDescriptions = {
   ]
 };
 
-const ResumeDescriptionGenerator = ({ 
+const ResumeDescriptionGenerator: React.FC<ResumeDescriptionGeneratorProps> = ({ 
   onSummaryChange, 
   initialSummary = '', 
   autoSave = true, 
@@ -55,8 +77,8 @@ const ResumeDescriptionGenerator = ({
   const [summary, setSummary] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showSuggestionsBox, setShowSuggestionsBox] = useState(false);
-  const [searchResults, setSearchResults] = useState([]);
-  const [textFormat, setTextFormat] = useState({
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [textFormat, setTextFormat] = useState<TextFormat>({
     bold: false,
     italic: false,
     underline: false,
@@ -98,13 +120,13 @@ const ResumeDescriptionGenerator = ({
     }
   }, [summary, isInitialLoad, blockAutoSave, autoSave, manualSaveOnly]);
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newSummary = e.target.value;
     console.log('📝 תקציר השתנה ל:', newSummary);
     setSummary(newSummary);
   };
 
-  const handleSearchChange = (e) => {
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
     setSearchQuery(query);
     
@@ -118,7 +140,7 @@ const ResumeDescriptionGenerator = ({
     );
     
     if (matchingProfessions.length > 0) {
-      const results = [];
+      const results: SearchResult[] = [];
       
       matchingProfessions.forEach(profession => {
         results.push({
@@ -126,7 +148,7 @@ const ResumeDescriptionGenerator = ({
           text: profession
         });
         
-        professionDescriptions[profession].forEach(description => {
+        professionDescriptions[profession].forEach((description: string) => {
           results.push({
             type: 'description',
             text: description,
@@ -142,7 +164,7 @@ const ResumeDescriptionGenerator = ({
   };
 
   // הוספת משפט לתקציר הקיים (במקום להחליף)
-  const handleDescriptionClick = (text) => {
+  const handleDescriptionClick = (text: string) => {
     const newSummary = summary ? 
                        (summary.endsWith('.') || summary.endsWith('!') || summary.endsWith('?') ? 
                        `${summary} ${text}` : 
@@ -153,7 +175,7 @@ const ResumeDescriptionGenerator = ({
   };
 
   // פונקציות לכפתורי עיצוב טקסט
-  const toggleFormat = (format) => {
+  const toggleFormat = (format: keyof TextFormat) => {
     setTextFormat(prev => ({
       ...prev,
       [format]: !prev[format]
@@ -161,7 +183,7 @@ const ResumeDescriptionGenerator = ({
   };
 
   // פונקציה לשינוי יישור טקסט
-  const setAlignment = (alignment) => {
+  const setAlignment = (alignment: string) => {
     setTextFormat(prev => ({
       ...prev,
       align: alignment
@@ -169,7 +191,8 @@ const ResumeDescriptionGenerator = ({
   };
 
   // פונקציה להחלת עיצוב בטקסט
-  const applyFormatting = (text) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const applyFormatting = (text: string) => {
     let formattedText = text;
     
     if (textFormat.bold) {
@@ -188,7 +211,7 @@ const ResumeDescriptionGenerator = ({
   };
 
   // פונקציה לטיפול ב-Enter ושבירת שורות
-  const handleKeyDown = (e) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter') {
       // אל תמנע את ברירת המחדל - תן לו לעבוד כרגיל
       // זה יגרום לירידת שורה
@@ -505,8 +528,8 @@ const ResumeDescriptionGenerator = ({
                               backgroundColor: 'white',
                               direction: 'rtl'
                             }}
-                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f6f6f6'}
-                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                            onMouseOver={(e) => (e.currentTarget as HTMLDivElement).style.backgroundColor = '#f6f6f6'}
+                            onMouseOut={(e) => (e.currentTarget as HTMLDivElement).style.backgroundColor = 'white'}
                           >
                             <button
                               onClick={() => handleDescriptionClick(result.text)}
@@ -618,7 +641,7 @@ const ResumeDescriptionGenerator = ({
               outline: 'none',
               fontFamily: 'inherit',
               direction: 'rtl',
-              textAlign: textFormat.align,
+              textAlign: textFormat.align as React.CSSProperties['textAlign'],
               fontWeight: textFormat.bold ? 'bold' : 'normal',
               fontStyle: textFormat.italic ? 'italic' : 'normal',
               textDecoration: textFormat.underline ? 'underline' : 'none',
@@ -631,4 +654,5 @@ const ResumeDescriptionGenerator = ({
     </div>
   );
 };
-export default ResumeDescriptionGenerator
+
+export default ResumeDescriptionGenerator;
