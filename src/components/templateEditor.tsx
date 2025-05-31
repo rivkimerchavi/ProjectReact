@@ -12,8 +12,31 @@ import { Download, Palette, Save, ArrowRight } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
+// הוספת טיפוסים בסיסיים
+interface FormData {
+  [key: string]: any;
+}
+
+interface SkillItem {
+  name: string;
+  level: string;
+}
+
+interface ExperienceItem {
+  company: string;
+  position: string;
+  experience: string;
+}
+
+interface EducationItem {
+  institution: string;
+  field: string;
+  startDate: any;
+  endDate: any;
+}
+
 // מיפוי שמות הקטגוריות לעברית
-const formTypeLabels = {
+const formTypeLabels: { [key: string]: string } = {
   Shafot: "שפות",
   SherutTzvaee: "שירות צבאי",
   Korsim: "קורסים",
@@ -25,8 +48,8 @@ const formTypeLabels = {
 };
 
 // פונקציה עזר להמרת שמות חודשים לעברית למספרים
-const getMonthNumber = (monthName) => {
-  const monthNames = {
+const getMonthNumber = (monthName: string) => {
+  const monthNames: { [key: string]: number } = {
     'ינואר': 0, 'פברואר': 1, 'מרץ': 2, 'אפריל': 3, 'מאי': 4, 'יוני': 5,
     'יולי': 6, 'אוגוסט': 7, 'ספטמבר': 8, 'אוקטובר': 9, 'נובמבר': 10, 'דצמבר': 11
   };
@@ -85,13 +108,13 @@ const TemplateEditor = () => {
     image: ''
   });
   const [summary, setSummary] = useState('');
-  const [experienceList, setExperienceList] = useState([]);
-  const [educationList, setEducationList] = useState([]);
-  const [testList, setTestList] = useState([]);
-  const [skills, setSkills] = useState([]);
-  const [formSelectorData, setFormSelectorData] = useState({});
+  const [experienceList, setExperienceList] = useState<any[]>([]);
+  const [educationList, setEducationList] = useState<any[]>([]);
+  const [testList, setTestList] = useState<any[]>([]);
+  const [skills, setSkills] = useState<any[]>([]);
+  const [formSelectorData, setFormSelectorData] = useState<any>({});
   const [saveStatus, setSaveStatus] = useState('saved');
-  const [resumeId, setResumeId] = useState(null);
+  const [resumeId, setResumeId] = useState<any>(null);
   const [isInitialCreation, setIsInitialCreation] = useState(true);
   const [cssLoaded, setCssLoaded] = useState(false);
   const [templateName, setTemplateName] = useState('1'); // default template
@@ -149,7 +172,7 @@ const TemplateEditor = () => {
       // טעינת ניסיון תעסוקתי
       if (existingResumeData.employmentExperienceItems && existingResumeData.employmentExperienceItems.length > 0) {
         console.log('💼 טוען ניסיון תעסוקתי:', existingResumeData.employmentExperienceItems);
-        const experiences = existingResumeData.employmentExperienceItems.map(exp => ({
+        const experiences = existingResumeData.employmentExperienceItems.map((exp: any) => ({
           company: exp.company || '',
           position: exp.position || '',
           jobType: exp.jobType || '',
@@ -170,7 +193,7 @@ const TemplateEditor = () => {
       
       if (existingResumeData.educationItems && existingResumeData.educationItems.length > 0) {
         console.log('🎓 טוען השכלה:', existingResumeData.educationItems);
-        const formattedEducation = existingResumeData.educationItems.map(edu => ({
+        const formattedEducation = existingResumeData.educationItems.map((edu: any) => ({
           institution: edu.institution || '',
           field: edu.field || '',
           startDate: {
@@ -190,7 +213,7 @@ const TemplateEditor = () => {
       // טעינת מבחנים
       if (existingResumeData.testItems && existingResumeData.testItems.length > 0) {
         console.log('📊 טוען מבחנים:', existingResumeData.testItems);
-        const tests = existingResumeData.testItems.map(test => ({
+        const tests = existingResumeData.testItems.map((test: any) => ({
           name: test.name || '',
           score: test.score || ''
         }));
@@ -200,7 +223,7 @@ const TemplateEditor = () => {
       // טעינת מיומנויות
       if (existingResumeData.skills && existingResumeData.skills.length > 0) {
         console.log('🛠️ טוען מיומנויות:', existingResumeData.skills);
-        const skillsData = existingResumeData.skills.map(skill => ({
+        const skillsData = existingResumeData.skills.map((skill: any) => ({
           name: skill.name || '',
           level: skill.level || ''
         }));
@@ -208,11 +231,11 @@ const TemplateEditor = () => {
       }
       
       // טעינת שפות ונתונים נוספים
-      const formSelectorTemp = {};
+      const formSelectorTemp: any = {};
       
       if (existingResumeData.languageItems && existingResumeData.languageItems.length > 0) {
         console.log('🗣️ טוען שפות:', existingResumeData.languageItems);
-        formSelectorTemp.Shafot = existingResumeData.languageItems.map(lang => [
+        formSelectorTemp.Shafot = existingResumeData.languageItems.map((lang: any) => [
           lang.languageName || '',
           lang.proficiencyLevel || ''
         ]);
@@ -220,7 +243,7 @@ const TemplateEditor = () => {
       
       if (existingResumeData.courseItems && existingResumeData.courseItems.length > 0) {
         console.log('📚 טוען קורסים:', existingResumeData.courseItems);
-        formSelectorTemp.Korsim = existingResumeData.courseItems.map(course => [
+        formSelectorTemp.Korsim = existingResumeData.courseItems.map((course: any) => [
           course.courseName || '',
           course.institution || '',
           course.year || ''
@@ -263,11 +286,11 @@ const TemplateEditor = () => {
 
   // 🚫 חסימת כל פונקציות שמירה אוטומטית
   useEffect(() => {
-    window.blockAutoSave = true;
-    window.resumeAutoSaveBlocked = true;
+    (window as any).blockAutoSave = true;
+    (window as any).resumeAutoSaveBlocked = true;
     
     const originalAxios = axios.post;
-    axios.post = (...args) => {
+    axios.post = (...args: any[]) => {
       if (args[0] && args[0].includes('resume-file') && blockAutoSave) {
         console.log('🚫 חסימת שמירה אוטומטית!', args[0]);
         return Promise.resolve({ data: { blocked: true } });
@@ -276,8 +299,8 @@ const TemplateEditor = () => {
     };
 
     return () => {
-      delete window.blockAutoSave;
-      delete window.resumeAutoSaveBlocked;
+      delete (window as any).blockAutoSave;
+      delete (window as any).resumeAutoSaveBlocked;
       axios.post = originalAxios;
     };
   }, [blockAutoSave]);
@@ -698,8 +721,8 @@ const saveResumeWithImage = useCallback(async (forceManual = false) => {
       logging: false
     });
 
-    const imageBlob = await new Promise(resolve => {
-      canvas.toBlob(resolve, 'image/png', 1.0);
+    const imageBlob = await new Promise<Blob>((resolve) => {
+      canvas.toBlob((blob) => resolve(blob!), 'image/png', 1.0);
     });
 
     let baseFileName;
@@ -760,17 +783,17 @@ const saveResumeWithImage = useCallback(async (forceManual = false) => {
     }
     
     // המרת כל הרשימות ל-JSON
-    const skillsJson = JSON.stringify((skills || []).map(skill => ({
+    const skillsJson = JSON.stringify((skills || []).map((skill: any) => ({
       Name: skill.name || '',
       Level: skill.level || ''
     })));
 
-    const languageItemsJson = JSON.stringify((formSelectorData.Shafot || []).map(lang => ({
+    const languageItemsJson = JSON.stringify(((formSelectorData as any).Shafot || []).map((lang: any) => ({
       LanguageName: lang[0] || '',
       ProficiencyLevel: lang[1] || ''
     })));
 
-    const employmentExperienceItemsJson = JSON.stringify((experienceList || []).map(exp => ({
+    const employmentExperienceItemsJson = JSON.stringify((experienceList || []).map((exp: any) => ({
       Company: exp.company || '',
       Position: exp.position || '',
       JobType: exp.jobType || '',
@@ -786,52 +809,52 @@ const saveResumeWithImage = useCallback(async (forceManual = false) => {
       Experience: exp.experience || ''
     })));
 
-    const educationItemsJson = JSON.stringify((educationList || []).map(edu => ({
+    const educationItemsJson = JSON.stringify((educationList || []).map((edu: any) => ({
       Institution: edu.institution || '',
       Field: edu.field || '',
       StartDate: edu.startDate || '',
       EndDate: edu.endDate || ''
     })));
 
-    const courseItemsJson = JSON.stringify((formSelectorData.Korsim || []).map(item => ({
+    const courseItemsJson = JSON.stringify(((formSelectorData as any).Korsim || []).map((item: any) => ({
       CourseName: item[0] || '',
       Institution: item[1] || '',
       Year: item[2] || ''
     })));
 
-    const hobbyItemsJson = JSON.stringify((formSelectorData.Tahbivim || []).map(item => ({
+    const hobbyItemsJson = JSON.stringify(((formSelectorData as any).Tahbivim || []).map((item: any) => ({
       HobbyName: item[0] || ''
     })));
 
-    const linkItemsJson = JSON.stringify((formSelectorData.Kishurim || []).map(link => ({
+    const linkItemsJson = JSON.stringify(((formSelectorData as any).Kishurim || []).map((link: any) => ({
       Title: link[0] || '',
       Url: link[1] || ''
     })));
 
-    const militaryServiceItemsJson = JSON.stringify((formSelectorData.SherutTzvaee || []).map(service => ({
+    const militaryServiceItemsJson = JSON.stringify(((formSelectorData as any).SherutTzvaee || []).map((service: any) => ({
       Unit: service[0] || '',
       Role: service[1] || ''
     })));
 
-    const motivationItemsJson = JSON.stringify((formSelectorData.Motamishit || []).map(item => ({
+    const motivationItemsJson = JSON.stringify(((formSelectorData as any).Motamishit || []).map((item: any) => ({
       Title: 'מוטיבציה אישית',
       Content: item[0] || ''
     })));
 
-    const referenceItemsJson = JSON.stringify((formSelectorData.Mamlitsim || []).map(ref => ({
+    const referenceItemsJson = JSON.stringify(((formSelectorData as any).Mamlitsim || []).map((ref: any) => ({
       Name: ref[0] || '',
       Role: ref[1] || '',
       Email: ref[4] || '',
       Phone: ref[3] || ''
     })));
 
-    const volunteeringItemsJson = JSON.stringify((formSelectorData.Etandvuyot || []).map(vol => ({
+    const volunteeringItemsJson = JSON.stringify(((formSelectorData as any).Etandvuyot || []).map((vol: any) => ({
       Organization: vol[0] || '',
       Role: vol[1] || '',
       Year: vol[2] || ''
     })));
 
-    const testItemsJson = JSON.stringify((testList || []).map(test => ({
+    const testItemsJson = JSON.stringify((testList || []).map((test: any) => ({
       Name: test.name || '',
       Score: test.score || ''
     })));
@@ -884,16 +907,16 @@ const saveResumeWithImage = useCallback(async (forceManual = false) => {
     console.log('📋 FormData שנשלח:');
     for (let [key, value] of formDataToSend.entries()) {
       if (key === 'file') {
-        console.log(`${key}: [File] ${value.name} (${(value.size / 1024).toFixed(1)}KB)`);
+        console.log(`${key}: [File] ${(value as File).name} (${((value as File).size / 1024).toFixed(1)}KB)`);
       } else if (key === 'resumeFileDto') {
-        console.log(`${key}: [JSON] ${value.substring(0, 100)}...`);
+        console.log(`${key}: [JSON] ${(value as string).substring(0, 100)}...`);
       } else {
         console.log(`${key}: ${value}`);
       }
     }
     
     const response = await axios({
-      method,
+      method: method as any,
       url,
       data: formDataToSend,
       headers: {
@@ -917,7 +940,7 @@ const saveResumeWithImage = useCallback(async (forceManual = false) => {
     setSaveStatus('saved');
     return response.data;
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ שגיאה בשמירה:', error);
     
     // 🔍 הדפס הכל בפירוט!
@@ -965,49 +988,50 @@ const saveResumeWithImage = useCallback(async (forceManual = false) => {
     throw error;
   }
 }, [formData, summary, experienceList, educationList, testList, skills, formSelectorData, resumeId, getAuthToken, API_BASE_URL, isInitialCreation, blockAutoSave, templateName, isEditingExisting]);
+
   // 🛡️ Event handlers פשוטים - ללא הגנות
-  const handleFormChange = (data) => {
+  const handleFormChange = (data: any) => {
     console.log('📝 Form change קיבל:', data);
     setFormData(data);
   };
 
-  const handleSummaryChange = (newSummary) => {
+  const handleSummaryChange = (newSummary: string) => {
     console.log('📝 Summary change קיבל:', newSummary);
     setSummary(newSummary);
   };
 
-  const handleAddExperience = (newExp) => {
+  const handleAddExperience = (newExp: any) => {
     console.log('📝 Add experience קיבל:', newExp);
     setExperienceList(prev => [...prev, newExp]);
   };
 
-  const handleExperienceUpdate = (updatedExperienceList) => {
+  const handleExperienceUpdate = (updatedExperienceList: any[]) => {
     console.log('📝 Experience update קיבל:', updatedExperienceList);
     setExperienceList(updatedExperienceList);
   };
 
-  const handleEducationUpdate = (updatedEducation) => {
+  const handleEducationUpdate = (updatedEducation: any[]) => {
     console.log('📝 Education update קיבל:', updatedEducation);
     setEducationList(updatedEducation);
   };
 
-  const handleTestUpdate = (updatedTests) => {
+  const handleTestUpdate = (updatedTests: any[]) => {
     console.log('📝 Test update קיבל:', updatedTests);
     setTestList(updatedTests);
   };
 
-  const handleSkillsChange = (updatedSkills) => {
+  const handleSkillsChange = (updatedSkills: any[]) => {
     console.log('📝 Skills change קיבל:', updatedSkills);
     setSkills(updatedSkills);
   };
 
-  const handleFormSelector = (formType, newData) => {
+  const handleFormSelector = (formType: string, newData: any) => {
     console.log('📝 Form selector קיבל:', formType, newData);
-    setFormSelectorData(prev => {
+    setFormSelectorData((prev: any) => {
       const existing = prev[formType] || [];
       const merged = [...existing, ...newData].filter(
-        (item, index, self) =>
-          index === self.findIndex(other => JSON.stringify(other) === JSON.stringify(item))
+        (item: any, index: number, self: any[]) =>
+          index === self.findIndex((other: any) => JSON.stringify(other) === JSON.stringify(item))
       );
       return { ...prev, [formType]: merged };
     });
@@ -1073,7 +1097,7 @@ const saveResumeWithImage = useCallback(async (forceManual = false) => {
     }
   };
 
-  const formatExperienceDate = (exp) => {
+  const formatExperienceDate = (exp: any) => {
     if (!exp.startDate || !exp.startDate.month || !exp.startDate.year) return "תאריך לא צוין";
     const startDate = `${exp.startDate.month} ${exp.startDate.year}`;
     const endDate = exp.currentJob ? 'עובד/ת כיום' : 
@@ -1081,7 +1105,7 @@ const saveResumeWithImage = useCallback(async (forceManual = false) => {
     return `${startDate} - ${endDate}`;
   };
 
-  const renderSkillProgressCircle = (level) => {
+  const renderSkillProgressCircle = (level: string) => {
     const radius = 8;
     const strokeWidth = 1.5;
     const normalizedRadius = radius - strokeWidth * 2;
@@ -1128,7 +1152,8 @@ const saveResumeWithImage = useCallback(async (forceManual = false) => {
       </svg>
     );
   };
-  const formatEducationDate = (edu) => {
+
+  const formatEducationDate = (edu: any) => {
     if (!edu.startDate || !edu.startDate.month || !edu.startDate.year) {
       return "תאריך לא צוין";
     }
@@ -1140,6 +1165,7 @@ const saveResumeWithImage = useCallback(async (forceManual = false) => {
     
     return `${startDate} - ${endDate}`;
   };
+
   const renderResumePreview = () => {
     console.log('🎯 renderResumePreview רץ עם:', {
       hasFormData: !!formData,
@@ -1158,11 +1184,11 @@ const saveResumeWithImage = useCallback(async (forceManual = false) => {
       );
     }
 
-    const formatExperiencePoints = (experienceText) => {
+    const formatExperiencePoints = (experienceText: string) => {
       if (!experienceText) return [];
       return experienceText.split('\n')
-        .map(line => line.trim())
-        .filter(line => line);
+        .map((line: string) => line.trim())
+        .filter((line: string) => line);
     };
 
     return (
@@ -1245,7 +1271,7 @@ const saveResumeWithImage = useCallback(async (forceManual = false) => {
           {skills.length > 0 && (
             <div className="sidebarSection">
               <h3 className="sidebarTitle">מיומנויות</h3>
-              {skills.map((skill, index) => (
+              {skills.map((skill: SkillItem, index: number) => (
                 <div key={index} className="skillItem">
                   {renderSkillProgressCircle(skill.level)}
                   <span className="skillName">{skill.name}</span>
@@ -1254,10 +1280,10 @@ const saveResumeWithImage = useCallback(async (forceManual = false) => {
             </div>
           )}
 
-          {formSelectorData.Shafot && formSelectorData.Shafot.length > 0 && (
+          {(formSelectorData as any).Shafot && (formSelectorData as any).Shafot.length > 0 && (
             <div className="sidebarSection">
               <h3 className="sidebarTitle">שפות</h3>
-              {formSelectorData.Shafot.map((lang, index) => (
+              {(formSelectorData as any).Shafot.map((lang: any, index: number) => (
                 <div key={index} className="languageItem">
                   <div className="languageName">{lang[0]}</div>
                   {lang[1] && <div className="languageLevel">{lang[1]}</div>}
@@ -1266,15 +1292,15 @@ const saveResumeWithImage = useCallback(async (forceManual = false) => {
             </div>
           )}
            
-          {Object.entries(formSelectorData)
+          {Object.entries(formSelectorData as FormData)
               .filter(([categoryKey]) => categoryKey !== 'Shafot' && categoryKey !== 'Korsim')
-              .map(([categoryKey, entries]) =>
+              .map(([categoryKey, entries]: [string, any]) =>
               entries.length > 0 && (
                   <div key={categoryKey} className="sidebarSection">
                   <h3 className="sidebarTitle">{formTypeLabels[categoryKey] || categoryKey}</h3>
-                  {entries.map((entry, entryIndex) => (
+                  {entries.map((entry: any, entryIndex: number) => (
                       <div key={entryIndex} style={{ marginBottom: '3px' }}>
-                      {entry.map((field, fieldIndex) =>
+                      {entry.map((field: any, fieldIndex: number) =>
                           field && (
                           <div
                               key={fieldIndex}
@@ -1306,14 +1332,14 @@ const saveResumeWithImage = useCallback(async (forceManual = false) => {
           {experienceList.length > 0 && (
             <div className="mainSection">
               <h3 className="mainSectionTitle">ניסיון מקצועי</h3>
-              {experienceList.map((exp, index) => (
+              {experienceList.map((exp: ExperienceItem, index: number) => (
                 exp.company && (
                   <div key={index} className="experienceItem">
                     <div className="experiencePosition">{exp.position}, {exp.company}</div>
                     <div className="experienceDate">{formatExperienceDate(exp)}</div>
                     {exp.experience && (
                       <ul className="experienceDetailsList">
-                        {formatExperiencePoints(exp.experience).map((point, i) => (
+                        {formatExperiencePoints(exp.experience).map((point: string, i: number) => (
                           <li key={i} className="experienceDetailItem">
                             <span className="bulletIcon">•</span>
                             <span>{point}</span>
@@ -1330,7 +1356,7 @@ const saveResumeWithImage = useCallback(async (forceManual = false) => {
           {educationList.length > 0 && (
             <div className="mainSection">
               <h3 className="mainSectionTitle">השכלה</h3>
-              {educationList.map((edu, index) => (
+              {educationList.map((edu: EducationItem, index: number) => (
                  edu.institution && edu.field && (
                     <div key={index} className="educationItem">
                         <div className="educationField">{edu.field}</div>
@@ -1338,17 +1364,17 @@ const saveResumeWithImage = useCallback(async (forceManual = false) => {
                         <div className="educationDate">
   {edu.startDate?.month && edu.startDate?.year ? `${edu.startDate.month} ${edu.startDate.year}` 
   : 'תאריך התחלה לא צוין'} - {edu.endDate?.month && edu.endDate?.year ? `${edu.endDate.month} ${edu.endDate.year}` : 'תאריך סיום לא צוין'}
-</div>ש
+</div>
                     </div>
                  )
               ))}
             </div>
           )}
 
-          {formSelectorData.Korsim && formSelectorData.Korsim.length > 0 && (
+          {(formSelectorData as any).Korsim && (formSelectorData as any).Korsim.length > 0 && (
             <div className="mainSection">
               <h3 className="mainSectionTitle">קורסים והכשרות</h3>
-              {formSelectorData.Korsim.map((item, index) => (
+              {(formSelectorData as any).Korsim.map((item: any, index: number) => (
                 <div key={index} className="educationItem">
                   {item[0] && <div className="educationField">{item[0]}</div>}
                   {item[1] && <div className="educationInstitution">{item[1]}</div>}
@@ -1361,7 +1387,7 @@ const saveResumeWithImage = useCallback(async (forceManual = false) => {
           {testList.length > 0 && (
             <div className="mainSection">
               <h3 className="mainSectionTitle">מבחנים</h3>
-              {testList.map((test, index) => (
+              {testList.map((test: any, index: number) => (
                 <div key={index} className="testItem">
                   <strong>{test.name}:</strong> {test.score}
                 </div>
