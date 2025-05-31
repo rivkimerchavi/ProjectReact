@@ -73,7 +73,7 @@ const TemplateEditor = () => {
     firstName: '',
     lastName: '',
     position: '',
-    email: 'default@email.com',
+    email: '',
     phone: '',
     city: '',
     country: '',
@@ -97,7 +97,9 @@ const TemplateEditor = () => {
   const [templateName, setTemplateName] = useState('1'); // default template
 
   // הגדרת השרת
-  const API_BASE_URL = 'http://localhost:5227';
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+  
 
   // 🔄 טעינת נתונים קיימים - גרסה מתוקנת!
   useEffect(() => {
@@ -166,10 +168,23 @@ const TemplateEditor = () => {
         setExperienceList(experiences);
       }
       
-      // טעינת השכלה
       if (existingResumeData.educationItems && existingResumeData.educationItems.length > 0) {
         console.log('🎓 טוען השכלה:', existingResumeData.educationItems);
-        setEducationList(existingResumeData.educationItems);
+        const formattedEducation = existingResumeData.educationItems.map(edu => ({
+          institution: edu.institution || '',
+          field: edu.field || '',
+          startDate: {
+            month: edu.startDate ? new Date(edu.startDate).toLocaleDateString('he-IL', { month: 'long' }) : '',
+            year: edu.startDate ? new Date(edu.startDate).getFullYear().toString() : ''
+          },
+          endDate: edu.currentlyStudying ? { month: '', year: '' } : {
+            month: edu.endDate ? new Date(edu.endDate).toLocaleDateString('he-IL', { month: 'long' }) : '',
+            year: edu.endDate ? new Date(edu.endDate).getFullYear().toString() : ''
+          },
+          currentlyStudying: edu.currentlyStudying || false,
+          description: edu.description || ''
+        }));
+        setEducationList(formattedEducation);
       }
       
       // טעינת מבחנים
@@ -637,212 +652,319 @@ const TemplateEditor = () => {
            localStorage.getItem('authToken') || 
            localStorage.getItem('accessToken');
   }, []);
+  // 🔧 תיקון פונקציית השמירה בשורות 745-750
+const saveResumeWithImage = useCallback(async (forceManual = false) => {
+  if (blockAutoSave && !forceManual) {
+    console.log('🚫 שמירה אוטומטית נחסמה!');
+    return null;
+  }
 
-  // 🔴 שמירה רק ידנית
-  const saveResumeWithImage = useCallback(async (forceManual = false) => {
-    if (blockAutoSave && !forceManual) {
-      console.log('🚫 שמירה אוטומטית נחסמה!');
-      return null;
-    }
-
-    console.log('💾 שמירה ידנית - התחלה');
+  console.log('💾 שמירה ידנית - התחלה');
+  
+  try {
+    setSaveStatus('saving');
     
-    try {
-      setSaveStatus('saving');
-      
-      if (!formData?.firstName && !formData?.lastName && !summary && 
-          experienceList.length === 0 && educationList.length === 0 && 
-          testList.length === 0 && skills.length === 0) {
-        console.log('🔕 אין נתונים לשמירה');
-        alert('נא למלא לפחות פרט אחד לפני השמירה');
-        setSaveStatus('saved');
-        return;
-      }
-
-      const token = getAuthToken();
-      if (!token) {
-        alert('נדרש להתחבר מחדש לפני השמירה');
-        throw new Error('לא נמצא טוקן התחברות');
-      }
-
-      console.log('📸 יוצר תמונה של קורות החיים...');
-      
-      const resumeElement = document.getElementById('resume-preview');
-      if (!resumeElement) {
-        throw new Error('לא נמצא אלמנט התצוגה המקדימה');
-      }
-
-      const canvas = await html2canvas(resumeElement, {
-        scale: 3,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        width: resumeElement.offsetWidth,
-        height: resumeElement.offsetHeight,
-        scrollX: 0,
-        scrollY: 0,
-        logging: false
-      });
-
-      const imageBlob = await new Promise(resolve => {
-        canvas.toBlob(resolve, 'image/png', 1.0);
-      });
-
-      let baseFileName;
-      const isLocalId = resumeId && resumeId.toString().startsWith('local_');
-      if (!isLocalId && resumeId && !isInitialCreation) {
-        baseFileName = `resume_${resumeId}.png`;
-      } else {
-        baseFileName = `resume_${Date.now()}.png`;
-      }
-
-      const imageFile = new File([imageBlob], baseFileName, { type: 'image/png' });
-
-      console.log('✅ תמונה נוצרה:', imageFile.name, `${(imageFile.size / 1024).toFixed(1)}KB`);
-
-      const formDataToSend = new FormData();
-      
-      formDataToSend.append('file', imageFile);
-      formDataToSend.append('FileName', baseFileName);
-      formDataToSend.append('Template', templateName);
-      formDataToSend.append('FirstName', formData?.firstName || '');
-      formDataToSend.append('LastName', formData?.lastName || '');
-      formDataToSend.append('Position', formData?.position || '');
-      formDataToSend.append('Email', formData?.email || 'default@email.com');
-      formDataToSend.append('Phone', formData?.phone || '');
-      formDataToSend.append('City', formData?.city || '');
-      formDataToSend.append('Country', formData?.country || '');
-      formDataToSend.append('Address', formData?.address || '');
-      formDataToSend.append('Citizenship', formData?.citizenship || '');
-      formDataToSend.append('LicenseType', formData?.licenseType || '');
-      formDataToSend.append('BirthDate', formData?.birthDate || '');
-      formDataToSend.append('IdNumber', formData?.idNumber || '');
-      formDataToSend.append('ProfileImage', formData?.image || '');
-      formDataToSend.append('Summary', summary || '');
-
-      // המרת כל הרשימות ל-JSON
-      formDataToSend.append('Skills', JSON.stringify((skills || []).map(skill => ({
-        Name: skill.name || '',
-        Level: skill.level || ''
-      }))));
-
-      formDataToSend.append('LanguageItems', JSON.stringify((formSelectorData.Shafot || []).map(lang => ({
-        LanguageName: lang[0] || '',
-        ProficiencyLevel: lang[1] || ''
-      }))));
-
-      formDataToSend.append('EmploymentExperienceItems', JSON.stringify((experienceList || []).map(exp => ({
-        Company: exp.company || '',
-        Position: exp.position || '',
-        JobType: exp.jobType || '',
-        Location: exp.location || '',
-        StartDate: exp.startDate?.year && exp.startDate?.month ? 
-                   new Date(parseInt(exp.startDate.year), getMonthNumber(exp.startDate.month), 1).toISOString() : 
-                   new Date().toISOString(),
-        EndDate: exp.currentJob ? new Date().toISOString() : 
-                 (exp.endDate?.year && exp.endDate?.month ? 
-                  new Date(parseInt(exp.endDate.year), getMonthNumber(exp.endDate.month), 1).toISOString() : 
-                  new Date().toISOString()),
-        CurrentJob: exp.currentJob || false,
-        Experience: exp.experience || ''
-      }))));
-
-      formDataToSend.append('EducationItems', JSON.stringify((educationList || []).map(edu => ({
-        Institution: edu.institution || '',
-        Field: edu.field || '',
-        StartDate: edu.startDate || '',
-        EndDate: edu.endDate || ''
-      }))));
-
-      formDataToSend.append('CourseItems', JSON.stringify((formSelectorData.Korsim || []).map(item => ({
-        CourseName: item[0] || '',
-        Institution: item[1] || '',
-        Year: item[2] || ''
-      }))));
-
-      formDataToSend.append('HobbyItems', JSON.stringify((formSelectorData.Tahbivim || []).map(item => ({
-        HobbyName: item[0] || ''
-      }))));
-
-      formDataToSend.append('LinkItems', JSON.stringify((formSelectorData.Kishurim || []).map(link => ({
-        Title: link[0] || '',
-        Url: link[1] || ''
-      }))));
-
-      formDataToSend.append('MilitaryServiceItems', JSON.stringify((formSelectorData.SherutTzvaee || []).map(service => ({
-        Unit: service[0] || '',
-        Role: service[1] || ''
-      }))));
-
-      formDataToSend.append('MotivationItems', JSON.stringify((formSelectorData.Motamishit || []).map(item => ({
-        Title: 'מוטיבציה אישית',
-        Content: item[0] || ''
-      }))));
-
-      formDataToSend.append('ReferenceItems', JSON.stringify((formSelectorData.Mamlitsim || []).map(ref => ({
-        Name: ref[0] || '',
-        Role: ref[1] || '',
-        Email: ref[4] || '',
-        Phone: ref[3] || ''
-      }))));
-
-      formDataToSend.append('VolunteeringItems', JSON.stringify((formSelectorData.Etandvuyot || []).map(vol => ({
-        Organization: vol[0] || '',
-        Role: vol[1] || '',
-        Year: vol[2] || ''
-      }))));
-
-      formDataToSend.append('TestItems', JSON.stringify((testList || []).map(test => ({
-        Name: test.name || '',
-        Score: test.score || ''
-      }))));
-
-      setBlockAutoSave(false);
-      
-      // קביעת סוג הפעולה - UPDATE אם יש ID קיים, CREATE אם חדש
-      const isUpdate = resumeId && !resumeId.toString().startsWith('local_') && !isInitialCreation;
-      const method = isUpdate ? 'PUT' : 'POST';
-      const url = isUpdate ? `${API_BASE_URL}/resume-file/${resumeId}` : `${API_BASE_URL}/resume-file`;
-
-      console.log(`🚀 ${isUpdate ? 'מעדכן' : 'יוצר'} קורות חיים בשרת...`);
-      const response = await axios({
-        method,
-        url,
-        data: formDataToSend,
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        timeout: 45000
-      });
-      console.log(data)
-      console.log(`✅ ${isUpdate ? 'עודכן' : 'נוצר'} בשרת בהצלחה!`);
-      
-      setBlockAutoSave(true);
-      
-      if (response.data?.id) {
-        setResumeId(response.data.id);
-        console.log('🆔 ID נקבע:', response.data.id);
-      }
-      
-      setIsInitialCreation(false);
+    if (!formData?.firstName && !formData?.lastName && !summary && 
+        experienceList.length === 0 && educationList.length === 0 && 
+        testList.length === 0 && skills.length === 0) {
+      console.log('🔕 אין נתונים לשמירה');
+      alert('נא למלא לפחות פרט אחד לפני השמירה');
       setSaveStatus('saved');
-      return response.data;
-
-    } catch (error) {
-      console.error('❌ שגיאה בשמירה:', error);
-      setSaveStatus('error');
-      setBlockAutoSave(true);
-      
-      if (error.response?.status === 401) {
-        console.error('🔐 בעיית הרשאה - טוקן לא תקין');
-        alert('בעיית הרשאה - נא להתחבר מחדש');
-        localStorage.removeItem('jwtToken');
-      }
-      
-      throw error;
+      return;
     }
-  }, [formData, summary, experienceList, educationList, testList, skills, formSelectorData, resumeId, getAuthToken, API_BASE_URL, isInitialCreation, blockAutoSave, templateName]);
 
+    const token = getAuthToken();
+    if (!token) {
+      alert('נדרש להתחבר מחדש לפני השמירה');
+      throw new Error('לא נמצא טוקן התחברות');
+    }
+
+    console.log('📸 יוצר תמונה של קורות החיים...');
+    
+    const resumeElement = document.getElementById('resume-preview');
+    if (!resumeElement) {
+      throw new Error('לא נמצא אלמנט התצוגה המקדימה');
+    }
+
+    const canvas = await html2canvas(resumeElement, {
+      scale: 3,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#ffffff',
+      width: resumeElement.offsetWidth,
+      height: resumeElement.offsetHeight,
+      scrollX: 0,
+      scrollY: 0,
+      logging: false
+    });
+
+    const imageBlob = await new Promise(resolve => {
+      canvas.toBlob(resolve, 'image/png', 1.0);
+    });
+
+    let baseFileName;
+    const isLocalId = resumeId && resumeId.toString().startsWith('local_');
+    if (!isLocalId && resumeId && !isInitialCreation) {
+      baseFileName = `resume_${resumeId}.png`;
+    } else {
+      baseFileName = `resume_${Date.now()}.png`;
+    }
+
+    const imageFile = new File([imageBlob], baseFileName, { type: 'image/png' });
+
+    console.log('✅ תמונה נוצרה:', imageFile.name, `${(imageFile.size / 1024).toFixed(1)}KB`);
+
+    // ✅ תיקון - התאמה לשרת האמיתי!
+    console.log('🆔 מידע על הקורות חיים:', {
+      resumeId: resumeId,
+      isInitialCreation: isInitialCreation,
+      isEditing: isEditingExisting,
+      existingResumeId: existingResumeData?.id
+    });
+
+    // 🎯 לוגיקה נכונה לעדכון VS יצירה
+    const hasValidResumeId = resumeId && !resumeId.toString().startsWith('local_');
+    const isEditingMode = isEditingExisting && existingResumeData?.id;
+    
+    const isUpdate = hasValidResumeId || isEditingMode;
+    const actualResumeId = resumeId || existingResumeData?.id;
+    
+    // 🔧 התאמה לשרת - נתיבים שונים וצורת שליחה שונה!
+    let method, url;
+    if (isUpdate) {
+      method = 'PUT';
+      url = `${API_BASE_URL}/resume-file/update/${actualResumeId}`; // 🔧 הנתיב הנכון!
+    } else {
+      method = 'POST';
+      url = `${API_BASE_URL}/resume-file`;
+    }
+
+    // יצירת FormData עכשיו כשהכל מוגדר
+    const formDataToSend = new FormData();
+    
+    // יצירת FormData נפרד לכל פרמטר
+    formDataToSend.append('file', imageFile);
+    
+    // 🔧 פורמט שונה לפי סוג הפעולה!
+    let fieldPrefix;
+    if (isUpdate) {
+      fieldPrefix = ''; // נסה בלי prefix בעדכון
+    } else {
+      fieldPrefix = ''; // גם ביצירה
+    }
+    
+    // 🚨 הוסף את ה-ID אם זה עדכון
+    if (isUpdate) {
+      formDataToSend.append('Id', actualResumeId);
+      formDataToSend.append('ResumeId', actualResumeId);
+    }
+    
+    // המרת כל הרשימות ל-JSON
+    const skillsJson = JSON.stringify((skills || []).map(skill => ({
+      Name: skill.name || '',
+      Level: skill.level || ''
+    })));
+
+    const languageItemsJson = JSON.stringify((formSelectorData.Shafot || []).map(lang => ({
+      LanguageName: lang[0] || '',
+      ProficiencyLevel: lang[1] || ''
+    })));
+
+    const employmentExperienceItemsJson = JSON.stringify((experienceList || []).map(exp => ({
+      Company: exp.company || '',
+      Position: exp.position || '',
+      JobType: exp.jobType || '',
+      Location: exp.location || '',
+      StartDate: exp.startDate?.year && exp.startDate?.month ? 
+                 new Date(parseInt(exp.startDate.year), getMonthNumber(exp.startDate.month), 1).toISOString() : 
+                 new Date().toISOString(),
+      EndDate: exp.currentJob ? new Date().toISOString() : 
+               (exp.endDate?.year && exp.endDate?.month ? 
+                new Date(parseInt(exp.endDate.year), getMonthNumber(exp.endDate.month), 1).toISOString() : 
+                new Date().toISOString()),
+      CurrentJob: exp.currentJob || false,
+      Experience: exp.experience || ''
+    })));
+
+    const educationItemsJson = JSON.stringify((educationList || []).map(edu => ({
+      Institution: edu.institution || '',
+      Field: edu.field || '',
+      StartDate: edu.startDate || '',
+      EndDate: edu.endDate || ''
+    })));
+
+    const courseItemsJson = JSON.stringify((formSelectorData.Korsim || []).map(item => ({
+      CourseName: item[0] || '',
+      Institution: item[1] || '',
+      Year: item[2] || ''
+    })));
+
+    const hobbyItemsJson = JSON.stringify((formSelectorData.Tahbivim || []).map(item => ({
+      HobbyName: item[0] || ''
+    })));
+
+    const linkItemsJson = JSON.stringify((formSelectorData.Kishurim || []).map(link => ({
+      Title: link[0] || '',
+      Url: link[1] || ''
+    })));
+
+    const militaryServiceItemsJson = JSON.stringify((formSelectorData.SherutTzvaee || []).map(service => ({
+      Unit: service[0] || '',
+      Role: service[1] || ''
+    })));
+
+    const motivationItemsJson = JSON.stringify((formSelectorData.Motamishit || []).map(item => ({
+      Title: 'מוטיבציה אישית',
+      Content: item[0] || ''
+    })));
+
+    const referenceItemsJson = JSON.stringify((formSelectorData.Mamlitsim || []).map(ref => ({
+      Name: ref[0] || '',
+      Role: ref[1] || '',
+      Email: ref[4] || '',
+      Phone: ref[3] || ''
+    })));
+
+    const volunteeringItemsJson = JSON.stringify((formSelectorData.Etandvuyot || []).map(vol => ({
+      Organization: vol[0] || '',
+      Role: vol[1] || '',
+      Year: vol[2] || ''
+    })));
+
+    const testItemsJson = JSON.stringify((testList || []).map(test => ({
+      Name: test.name || '',
+      Score: test.score || ''
+    })));
+
+    // יצירת FormData נפרד לכל פרמטר
+    formDataToSend.append('file', imageFile);
+    
+    // 🔧 פורמט שונה לפי סוג הפעולה!
+    const prefix = isUpdate ? 'resumeFileDto.' : '';
+    
+    formDataToSend.append(`${fieldPrefix}FileName`, baseFileName);
+    formDataToSend.append(`${fieldPrefix}Template`, templateName);
+    formDataToSend.append(`${fieldPrefix}FirstName`, formData?.firstName || '');
+    formDataToSend.append(`${fieldPrefix}LastName`, formData?.lastName || '');
+    formDataToSend.append(`${fieldPrefix}Position`, formData?.position || '');
+    formDataToSend.append(`${fieldPrefix}Email`, formData?.email || 'default@email.com');
+    formDataToSend.append(`${fieldPrefix}Phone`, formData?.phone || '');
+    formDataToSend.append(`${fieldPrefix}City`, formData?.city || '');
+    formDataToSend.append(`${fieldPrefix}Country`, formData?.country || '');
+    formDataToSend.append(`${fieldPrefix}Address`, formData?.address || '');
+    formDataToSend.append(`${fieldPrefix}Citizenship`, formData?.citizenship || '');
+    formDataToSend.append(`${fieldPrefix}LicenseType`, formData?.licenseType || '');
+    formDataToSend.append(`${fieldPrefix}BirthDate`, formData?.birthDate || '');
+    formDataToSend.append(`${fieldPrefix}IdNumber`, formData?.idNumber || '');
+    formDataToSend.append(`${fieldPrefix}ProfileImage`, formData?.image || '');
+    formDataToSend.append(`${fieldPrefix}Summary`, summary || '');
+
+    // הוספת הרשימות כ-JSON
+    formDataToSend.append(`${fieldPrefix}Skills`, skillsJson);
+    formDataToSend.append(`${fieldPrefix}LanguageItems`, languageItemsJson);
+    formDataToSend.append(`${fieldPrefix}EmploymentExperienceItems`, employmentExperienceItemsJson);
+    formDataToSend.append(`${fieldPrefix}EducationItems`, educationItemsJson);
+    formDataToSend.append(`${fieldPrefix}CourseItems`, courseItemsJson);
+    formDataToSend.append(`${fieldPrefix}HobbyItems`, hobbyItemsJson);
+    formDataToSend.append(`${fieldPrefix}LinkItems`, linkItemsJson);
+    formDataToSend.append(`${fieldPrefix}MilitaryServiceItems`, militaryServiceItemsJson);
+    formDataToSend.append(`${fieldPrefix}MotivationItems`, motivationItemsJson);
+    formDataToSend.append(`${fieldPrefix}ReferenceItems`, referenceItemsJson);
+    formDataToSend.append(`${fieldPrefix}VolunteeringItems`, volunteeringItemsJson);
+    formDataToSend.append(`${fieldPrefix}TestItems`, testItemsJson);
+
+    setBlockAutoSave(false);
+
+    console.log(`🚀 ${isUpdate ? 'מעדכן' : 'יוצר'} קורות חיים בשרת...`);
+    console.log('📍 URL:', url);
+    console.log('📍 Method:', method);
+    console.log('📍 Resume ID:', actualResumeId);
+    
+    // 🔍 Debug - בואו נראה מה אנחנו שולחים
+    console.log('📋 FormData שנשלח:');
+    for (let [key, value] of formDataToSend.entries()) {
+      if (key === 'file') {
+        console.log(`${key}: [File] ${value.name} (${(value.size / 1024).toFixed(1)}KB)`);
+      } else if (key === 'resumeFileDto') {
+        console.log(`${key}: [JSON] ${value.substring(0, 100)}...`);
+      } else {
+        console.log(`${key}: ${value}`);
+      }
+    }
+    
+    const response = await axios({
+      method,
+      url,
+      data: formDataToSend,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data',
+      },
+      timeout: 45000
+    });
+    
+    console.log('📦 תגובה מהשרת:', response.data);
+    console.log(`✅ ${isUpdate ? 'עודכן' : 'נוצר'} בשרת בהצלחה!`);
+    
+    setBlockAutoSave(true);
+    
+    if (response.data?.id) {
+      setResumeId(response.data.id);
+      console.log('🆔 ID נקבע:', response.data.id);
+    }
+    
+    setIsInitialCreation(false);
+    setSaveStatus('saved');
+    return response.data;
+
+  } catch (error) {
+    console.error('❌ שגיאה בשמירה:', error);
+    
+    // 🔍 הדפס הכל בפירוט!
+    console.error('📍 Status:', error.response?.status);
+    console.error('📍 Status Text:', error.response?.statusText);
+    console.error('📍 Headers:', error.response?.headers);
+    console.error('📍 Data (raw):', error.response?.data);
+    console.error('📍 Data type:', typeof error.response?.data);
+    
+    // נסה להדפיס בפורמטים שונים
+    if (error.response?.data) {
+      try {
+        console.error('📋 Data as JSON:', JSON.stringify(error.response.data, null, 2));
+      } catch {
+        console.error('📋 Data as string:', String(error.response.data));
+      }
+    }
+    
+    console.error('📍 פרטי השגיאה:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      resumeId: resumeId,
+      wasUpdate: hasValidResumeId || isEditingMode
+    });
+    
+    setSaveStatus('error');
+    setBlockAutoSave(true);
+    
+    if (error.response?.status === 401) {
+      console.error('🔐 בעיית הרשאה - טוקן לא תקין');
+      alert('בעיית הרשאה - נא להתחבר מחדש');
+      localStorage.removeItem('jwtToken');
+    } else if (error.response?.status === 404) {
+      console.error('🔍 הקורות חיים לא נמצאו בשרת');
+      alert('הקורות חיים נשמרו כחדשים (לא נמצא המקור)');
+    } else {
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.title || 
+                          error.response?.data || 
+                          error.message;
+      alert(`❌ שגיאה בשמירה: ${errorMessage}`);
+    }
+    
+    throw error;
+  }
+}, [formData, summary, experienceList, educationList, testList, skills, formSelectorData, resumeId, getAuthToken, API_BASE_URL, isInitialCreation, blockAutoSave, templateName, isEditingExisting]);
   // 🛡️ Event handlers פשוטים - ללא הגנות
   const handleFormChange = (data) => {
     console.log('📝 Form change קיבל:', data);
@@ -1006,8 +1128,27 @@ const TemplateEditor = () => {
       </svg>
     );
   };
-
+  const formatEducationDate = (edu) => {
+    if (!edu.startDate || !edu.startDate.month || !edu.startDate.year) {
+      return "תאריך לא צוין";
+    }
+    
+    const startDate = `${edu.startDate.month} ${edu.startDate.year}`;
+    const endDate = edu.currentlyStudying ? 'לומד/ת כיום' : 
+                    (edu.endDate && edu.endDate.month && edu.endDate.year ? 
+                     `${edu.endDate.month} ${edu.endDate.year}` : 'תאריך סיום לא צוין');
+    
+    return `${startDate} - ${endDate}`;
+  };
   const renderResumePreview = () => {
+    console.log('🎯 renderResumePreview רץ עם:', {
+      hasFormData: !!formData,
+      hasExperience: experienceList.length,
+      hasEducation: educationList.length,
+      hasSkills: skills.length,
+      formData: formData,
+      experienceList: experienceList
+    });
     if (!formData) {
       return (
         <div className="noDataMessage">
@@ -1034,9 +1175,10 @@ const TemplateEditor = () => {
             </div>
           )}
 
-          <div className="sidebarSection">
-            <h3 className="sidebarTitle">פרטי קשר</h3>
-            {formData.phone && (
+{(formData.phone || formData.email || formData.city || formData.country || formData.citizenship || formData.birthDate || formData.idNumber || formData.licenseType) && (
+  <div className="sidebarSection">
+    <h3 className="sidebarTitle">פרטי קשר</h3>
+    {formData.phone && (
               <div className="contactItem">
                 <svg className="contactIcon" viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
                 <span className="contactText">{formData.phone}</span>
@@ -1095,7 +1237,11 @@ const TemplateEditor = () => {
               </div>
             )}
           </div>
-
+          
+      
+         
+          )}
+ 
           {skills.length > 0 && (
             <div className="sidebarSection">
               <h3 className="sidebarTitle">מיומנויות</h3>
@@ -1189,7 +1335,10 @@ const TemplateEditor = () => {
                     <div key={index} className="educationItem">
                         <div className="educationField">{edu.field}</div>
                         <div className="educationInstitution">{edu.institution}</div>
-                        <div className="educationDate">{edu.startDate} - {edu.endDate}</div>
+                        <div className="educationDate">
+  {edu.startDate?.month && edu.startDate?.year ? `${edu.startDate.month} ${edu.startDate.year}` 
+  : 'תאריך התחלה לא צוין'} - {edu.endDate?.month && edu.endDate?.year ? `${edu.endDate.month} ${edu.endDate.year}` : 'תאריך סיום לא צוין'}
+</div>ש
                     </div>
                  )
               ))}
@@ -1462,9 +1611,9 @@ const TemplateEditor = () => {
             <ResumeDescriptionGenerator 
               onSummaryChange={handleSummaryChange} 
               initialSummary={summary}
-              autoSave={false}
-              blockAutoSave={true}
-              manualSaveOnly={true}
+              autoSave={true}
+              blockAutoSave={false}
+              manualSaveOnly={false}
             />
           </div>
 
@@ -1473,9 +1622,9 @@ const TemplateEditor = () => {
               onFormChange={handleAddExperience} 
               onExperienceListChange={handleExperienceUpdate}
               initialExperiences={experienceList}
-              autoSave={false}
-              blockAutoSave={true}
-              manualSaveOnly={true}
+              autoSave={true}
+              blockAutoSave={false}
+              manualSaveOnly={false}
             />
           </div>
 
@@ -1485,9 +1634,9 @@ const TemplateEditor = () => {
               onTestUpdate={handleTestUpdate}
               initialEducation={educationList}
               initialTests={testList}
-              autoSave={false}
-              blockAutoSave={true}
-              manualSaveOnly={true}
+              autoSave={true}
+              blockAutoSave={false}
+              manualSaveOnly={false}
             />
           </div>
 
@@ -1495,9 +1644,9 @@ const TemplateEditor = () => {
             <SkillSection 
               onSkillsChange={handleSkillsChange} 
               initialSkills={skills}
-              autoSave={false}
-              blockAutoSave={true}
-              manualSaveOnly={true}
+              autoSave={true}
+              blockAutoSave={false}
+              manualSaveOnly={false}
             />
           </div>
 
@@ -1505,9 +1654,9 @@ const TemplateEditor = () => {
             <FormSelector 
               onFormDataChange={handleFormSelector} 
               initialData={formSelectorData}
-              autoSave={false}
-              blockAutoSave={true}
-              manualSaveOnly={true}
+              autoSave={true}
+              blockAutoSave={false}
+              manualSaveOnly={false}
             />
           </div>
           

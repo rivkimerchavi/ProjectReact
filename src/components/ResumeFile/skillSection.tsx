@@ -1,442 +1,394 @@
-import React, { useState } from "react";
-import {
-  Typography,
-  TextField,
-  Button,
-  Grid,
-  Box,
-  Card,
-  CardHeader,
-  CardContent,
-  Collapse,
-  IconButton,
-  Divider,
-  Paper,
-  Tooltip,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem
-} from "@mui/material";
-import {
-  ExpandLess as ExpandLessIcon,
-  ExpandMore as ExpandMoreIcon,
-  Delete as DeleteIcon,
-  Add as AddIcon,
-  Edit as EditIcon,
-  HelpOutline as HelpIcon,
-  Close as CloseIcon
-} from "@mui/icons-material";
-import { createTheme, ThemeProvider } from "@mui/material/styles";
-import rtlPlugin from "stylis-plugin-rtl";
-import { prefixer } from "stylis";
-import { CacheProvider } from "@emotion/react";
-import createCache from "@emotion/cache";
+import React, { useState, useEffect, useRef } from 'react';
 
-// RTL cache
-const cacheRtl = createCache({
-  key: "muirtl",
-  stylisPlugins: [prefixer, rtlPlugin],
-});
+const SkillSection = ({ 
+  onSkillsChange, 
+  initialSkills = [],
+  autoSave = true,
+  blockAutoSave = false,
+  manualSaveOnly = false
+}) => {
+  console.log('🏃‍♂️ SkillSection התחיל עם initialSkills:', initialSkills);
 
-// RTL theme
-const theme = createTheme({
-  direction: "rtl",
-  typography: {
-    fontFamily: "'Assistant', 'Roboto', 'Helvetica', 'Arial', sans-serif",
-  },
-  components: {
-    MuiInputBase: {
-      styleOverrides: {
-        input: {
-          textAlign: "right",
-        },
-      },
-    },
-    MuiCard: {
-      styleOverrides: {
-        root: {
-          boxShadow: '0px 0px 0px 1px rgba(0, 0, 0, 0.05)',
-          borderRadius: '8px',
-        },
-      },
-    },
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          borderRadius: '20px',
-          textTransform: 'none',
-        },
-        contained: {
-          backgroundColor: '#1976d2',
-          color: '#fff',
-          '&:hover': {
-            backgroundColor: '#1565c0',
-          },
-        },
-        outlined: {
-          borderColor: 'rgba(25, 118, 210, 0.5)',
-          '&:hover': {
-            borderColor: '#1976d2',
-            backgroundColor: 'rgba(25, 118, 210, 0.04)',
-          },
-        },
-      },
-    },
-    MuiPaper: {
-      styleOverrides: {
-        outlined: {
-          borderColor: 'rgba(0, 0, 0, 0.12)',
-        },
-      },
-    },
-  },
-});
+  const [skills, setSkills] = useState([]);
+  const [currentSkill, setCurrentSkill] = useState({ name: '', level: '' });
+  const [showForm, setShowForm] = useState(false);
+  const [editingIndex, setEditingIndex] = useState(-1);
 
-interface Skill {
-  name: string;
-  level: string;
-}
+  // 🔧 טעינת נתונים קיימים
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const initialDataLoaded = useRef(false);
+  const onSkillsChangeRef = useRef(onSkillsChange);
 
-// מיומנויות מוכנות מראש
-const predefinedSkills = [
-  "כישורי ארגון",
-  "פתרון בעיות",
-  "עבודה בצוות",
-  "יצירתיות",
-  "אחריות",
-  "מוסר עבודה גבוה",
-  "ניהול זמן יעיל",
-  "חשיבה אנליטית",
-  "תפקוד במצבי לחץ",
-  "יחסי אנוש מעולים",
-];
+  // עדכון ה-ref כאשר הפונקציה משתנה
+  useEffect(() => {
+    onSkillsChangeRef.current = onSkillsChange;
+  }, [onSkillsChange]);
 
-// רמות מיומנות
-const skillLevels = ["גבוהה", "בינונית", "בסיסית", "ללא רמה"];
+  // 🔥 טעינת נתונים ראשוניים - רק פעם אחת!
+  useEffect(() => {
+    console.log('🔄 SkillSection useEffect רץ עם initialSkills:', initialSkills);
+    
+    if (!initialDataLoaded.current) {
+      if (initialSkills && initialSkills.length > 0) {
+        console.log('✅ מעדכן רשימת מיומנויות עם נתונים ראשוניים:', initialSkills);
+        setSkills(initialSkills);
+      }
+      
+      initialDataLoaded.current = true;
+      setIsInitialLoad(false);
+    }
+  }, [initialSkills]);
 
-// עזרה והסברים על השדות
-const helpText = {
-  main: "הוסף את המיומנויות והכישורים שלך. בחר מתוך הרשימה או הוסף משלך.",
-};
+  // useEffect לשליחת נתונים לparent - רק אחרי הטעינה הראשונית
+  useEffect(() => {
+    if (!isInitialLoad && onSkillsChangeRef.current && !blockAutoSave && autoSave && !manualSaveOnly) {
+      console.log('📤 שולח רשימת מיומנויות לparent:', skills);
+      onSkillsChangeRef.current(skills);
+    }
+  }, [skills, isInitialLoad, blockAutoSave, autoSave, manualSaveOnly]);
 
-interface SkillSectionProps {
-  onSkillsChange?: (skills: Skill[]) => void;
-}
-
-export default function SkillSection({ onSkillsChange }: SkillSectionProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
-  const [skills, setSkills] = useState<Skill[]>([]);
-  const [selectedSkill, setSelectedSkill] = useState("");
-  const [selectedLevel, setSelectedLevel] = useState("גבוהה");
-  const [customSkill, setCustomSkill] = useState("");
-  const [error, setError] = useState("");
-  const [showSkillForm, setShowSkillForm] = useState(false);
-  const [helpAnchorEl, setHelpAnchorEl] = useState<null | HTMLElement>(null);
-  
-  const skillButtons = [
-    "כישורי ארגון",
-    "פתרון בעיות",
-    "עבודה בצוות",
-    "יצירתיות",
-    "אחריות",
-    "מוסר עבודה גבוה",
-    "ניהול זמן יעיל",
-    "חשיבה אנליטית",
-    "תפקוד במצבי לחץ",
-    "יחסי אנוש מעולים",
-  ];
-
-  const handleHelpClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    setHelpAnchorEl(event.currentTarget);
-  };
-  
-  const handleHelpClose = () => {
-    setHelpAnchorEl(null);
+  const handleInputChange = (field, value) => {
+    console.log(`📝 מיומנות - שדה ${field} השתנה ל:`, value);
+    setCurrentSkill(prev => ({ ...prev, [field]: value }));
   };
 
   const handleAddSkill = () => {
-    const skillName = customSkill || selectedSkill;
+    if (!currentSkill.name.trim()) return;
 
-    if (!skillName) {
-      setError("יש לבחור או להזין מיומנות");
-      return;
+    let updatedSkills;
+    if (editingIndex >= 0) {
+      // עדכון מיומנות קיימת
+      updatedSkills = [...skills];
+      updatedSkills[editingIndex] = currentSkill;
+      setEditingIndex(-1);
+      console.log('🛠️ עדכן מיומנות:', currentSkill);
+    } else {
+      // הוספת מיומנות חדשה
+      updatedSkills = [...skills, currentSkill];
+      console.log('🛠️ הוסף מיומנות:', currentSkill);
     }
 
-    // בדיקה אם המיומנות כבר קיימת
-    if (skills.some(skill => skill.name === skillName)) {
-      setError("מיומנות זו כבר קיימת ברשימה");
-      return;
-    }
-
-    const updatedSkills = [...skills, { name: skillName, level: selectedLevel }];
     setSkills(updatedSkills);
-    
-    if (onSkillsChange) {
-      onSkillsChange(updatedSkills);
-    }
-    
-    setSelectedSkill("");
-    setCustomSkill("");
-    setError("");
+    setCurrentSkill({ name: '', level: '' });
+    setShowForm(false);
   };
 
-  const handleDeleteSkill = (index: number) => {
+  const handleEditSkill = (index) => {
+    const skillToEdit = skills[index];
+    console.log('✏️ ערוך מיומנות:', skillToEdit);
+    setCurrentSkill(skillToEdit);
+    setEditingIndex(index);
+    setShowForm(true);
+  };
+
+  const handleDeleteSkill = (index) => {
     const updatedSkills = skills.filter((_, i) => i !== index);
+    console.log('🗑️ מחק מיומנות:', index);
     setSkills(updatedSkills);
-    
-    if (onSkillsChange) {
-      onSkillsChange(updatedSkills);
-    }
   };
-  
-  const handleQuickSkillAdd = (skillName: string) => {
-    // בדיקה אם המיומנות כבר קיימת
-    if (skills.some(skill => skill.name === skillName)) {
-      setError("מיומנות זו כבר קיימת ברשימה");
-      return;
-    }
 
-    const updatedSkills = [...skills, { name: skillName, level: "גבוהה" }];
-    setSkills(updatedSkills);
-    
-    if (onSkillsChange) {
-      onSkillsChange(updatedSkills);
-    }
-    
-    setError("");
+  const handleCancel = () => {
+    setCurrentSkill({ name: '', level: '' });
+    setShowForm(false);
+    setEditingIndex(-1);
   };
+
+  const levelOptions = [
+    { value: 'גבוהה', label: 'גבוהה' },
+    { value: 'בינונית', label: 'בינונית' },
+    { value: 'נמוכה', label: 'נמוכה' },
+    { value: 'מתחיל', label: 'מתחיל' },
+    { value: 'מתקדם', label: 'מתקדם' },
+    { value: 'מומחה', label: 'מומחה' }
+  ];
 
   return (
-    <CacheProvider value={cacheRtl}>
-      <ThemeProvider theme={theme}>
-        <Box dir="rtl">
-          <Card elevation={0} sx={{ maxWidth: 800, mx: "auto", mt: 3, border: "1px solid rgba(0, 0, 0, 0.05)" }}>
-            <CardHeader
-              title={
-                <Box display="flex" alignItems="center">
-                  {/* <IconButton 
-                    size="small" 
-                    onClick={() => setIsExpanded(!isExpanded)}
-                    sx={{ ml: 1 }}
+    <div style={{ 
+      padding: '0', 
+      maxWidth: '1000px', 
+      margin: '16px auto',
+      background: '#ffffff',
+      fontFamily: 'Arial, sans-serif',
+      position: 'relative',
+      borderRadius: '8px',
+      overflow: 'hidden',
+      border: '1px solid #d0d0d0',
+      boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
+    }}>
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        borderBottom: '1px solid #d0d0d0',
+        padding: '12px 16px',
+        backgroundColor: '#ffffff'
+      }}>
+        <div></div>
+        <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>מיומנויות</h2>
+        <div 
+          title="הוסף מיומנויות טכניות ומקצועיות רלוונטיות לתפקיד"
+          style={{ 
+            cursor: 'help',
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center'
+          }}
+          onMouseOver={() => {
+            const tooltip = document.getElementById('skills-tooltip');
+            if (tooltip) tooltip.style.display = 'block';
+          }}
+          onMouseOut={() => {
+            const tooltip = document.getElementById('skills-tooltip');
+            if (tooltip) tooltip.style.display = 'none';
+          }}
+        >
+          <svg style={{ width: '18px', height: '18px', fill: '#757575' }} viewBox="0 0 24 24">
+            <path d="M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z" />
+          </svg>
+          <span style={{ fontSize: '14px', color: '#333', fontWeight: 'bold', marginRight: '6px' }}>מיומנויות</span>
+          <div 
+            id="skills-tooltip"
+            style={{
+              display: 'none',
+              position: 'absolute',
+              top: '25px',
+              right: '-10px',
+              width: '200px',
+              backgroundColor: '#626262',
+              color: '#ffffff',
+              padding: '8px 12px',
+              borderRadius: '4px',
+              fontSize: '13px',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
+              zIndex: 1000,
+              textAlign: 'right',
+              direction: 'rtl'
+            }}
+          >
+            הוסף מיומנויות טכניות ומקצועיות רלוונטיות לתפקיד
+          </div>
+        </div>
+      </div>
+
+      <div style={{ padding: '24px' }}>
+        <p style={{ 
+          textAlign: 'right', 
+          color: '#666', 
+          margin: '0 0 16px 0', 
+          fontSize: '14px' 
+        }}>
+          הוסף מיומנויות טכניות ומקצועיות המתאימות לתחום עבודתך
+        </p>
+
+        {/* רשימת מיומנויות קיימות */}
+        {skills.length > 0 && !showForm && (
+          <div style={{ marginBottom: '16px' }}>
+            {skills.map((skill, index) => (
+              <div 
+                key={index}
+                style={{
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '4px',
+                  padding: '12px',
+                  marginBottom: '8px',
+                  backgroundColor: '#f9f9f9',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  direction: 'rtl'
+                }}
+              >
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => handleDeleteSkill(index)}
+                    style={{
+                      background: '#ef4444',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      padding: '4px 8px',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      outline: 'none'
+                    }}
                   >
-                    {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                  </IconButton> */}
-                  <span style={{ fontSize: '14px', color: '#333', fontWeight: 'bold' }}>מיומנויות</span>
-                  <IconButton size="small" aria-label="help">
-                      <HelpIcon fontSize="small" />
-                    </IconButton>
-                </Box>
-              }
-              action={
-                <Box display="flex" alignItems="center">
-                  {/* <Tooltip title={helpText.main}>
-                 
-                  </Tooltip>
-                  <IconButton size="small" aria-label="edit" sx={{ ml: 1 }}>
-                    <EditIcon fontSize="small" />
-                  </IconButton> */}
-                </Box>
-              }
-              sx={{ 
-                borderBottom: "1px solid rgba(0, 0, 0, 0.05)",
-                py: 1.5,
-                backgroundColor: '#f9f9f9',
-              }}
-            />
-            
-            <Collapse in={isExpanded}>
-              <CardContent>
-                {/* כפתורי מיומנויות מהירות */}
-                <Box sx={{ mb: 3, display: 'flex', flexWrap: 'wrap', justifyContent: 'center' }}>
-                  {skillButtons.slice(0, 5).map((skill, index) => (
-                    <Button
-                      key={index}
-                      variant="outlined"
-                      size="small"
-                      onClick={() => handleQuickSkillAdd(skill)}
-                      sx={{ 
-                        m: 0.5, 
-                        borderRadius: '20px',
-                        backgroundColor: '#f5f5f5',
-                        color: '#333',
-                        borderColor: '#e0e0e0',
-                        fontWeight: 'normal',
-                        fontSize: '14px',
-                        '&:hover': {
-                          backgroundColor: '#e3f2fd',
-                          borderColor: '#90caf9'
-                        }
-                      }}
-                      startIcon={<AddIcon fontSize="small" />}
-                    >
-                      {skill}
-                    </Button>
-                  ))}
-                </Box>
-                
-                <Box sx={{ mb: 3, display: 'flex', flexWrap: 'wrap', justifyContent: 'center' }}>
-                  {skillButtons.slice(5, 10).map((skill, index) => (
-                    <Button
-                      key={index}
-                      variant="outlined"
-                      size="small"
-                      onClick={() => handleQuickSkillAdd(skill)}
-                      sx={{ 
-                        m: 0.5, 
-                        borderRadius: '20px',
-                        backgroundColor: '#f5f5f5',
-                        color: '#333',
-                        borderColor: '#e0e0e0',
-                        fontWeight: 'normal',
-                        fontSize: '14px',
-                        '&:hover': {
-                          backgroundColor: '#e3f2fd',
-                          borderColor: '#90caf9'
-                        }
-                      }}
-                      startIcon={<AddIcon fontSize="small" />}
-                    >
-                      {skill}
-                    </Button>
-                  ))}
-                </Box>
+                    מחק
+                  </button>
+                  <button
+                    onClick={() => handleEditSkill(index)}
+                    style={{
+                      background: '#3b82f6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      padding: '4px 8px',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      outline: 'none'
+                    }}
+                  >
+                    ערוך
+                  </button>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontWeight: 'bold', fontSize: '14px' }}>
+                    {skill.name}
+                  </div>
+                  {skill.level && (
+                    <div style={{ fontSize: '12px', color: '#666' }}>
+                      רמה: {skill.level}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
-                {/* הצגת מיומנויות שנבחרו */}
-                {skills.length > 0 && !showSkillForm && (
-                  <Box>
-                    {skills.map((skill, index) => (
-                      <Box 
-                        key={index}
-                        sx={{ 
-                          display: 'flex', 
-                          justifyContent: 'space-between', 
-                          alignItems: 'center',
-                          p: 1,
-                          borderBottom: '1px solid #eee'
-                        }}
-                      >
-                        <Box display="flex" alignItems="center">
-                          <Typography>{skill.name}</Typography>
-                        </Box>
-                        <Box display="flex" alignItems="center">
-                          <Typography color="text.secondary" sx={{ mr: 2 }}>
-                            רמה: {skill.level}
-                          </Typography>
-                          <IconButton 
-                            size="small" 
-                            onClick={() => handleDeleteSkill(index)}
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Box>
-                      </Box>
-                    ))}
-                  </Box>
-                )}
+        {/* כפתור הוספת מיומנות או טופס */}
+        {!showForm ? (
+          <button
+            onClick={() => setShowForm(true)}
+            style={{
+              width: '100%',
+              padding: '12px',
+              backgroundColor: 'rgba(25, 118, 210, 0.04)',
+              border: '1px solid rgba(25, 118, 210, 0.5)',
+              borderRadius: '4px',
+              color: '#1976d2',
+              fontSize: '14px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              outline: 'none'
+            }}
+            onMouseOver={(e) => {
+              e.target.style.backgroundColor = 'rgba(25, 118, 210, 0.08)';
+              e.target.style.borderColor = '#1976d2';
+            }}
+            onMouseOut={(e) => {
+              e.target.style.backgroundColor = 'rgba(25, 118, 210, 0.04)';
+              e.target.style.borderColor = 'rgba(25, 118, 210, 0.5)';
+            }}
+          >
+            <svg style={{ width: '16px', height: '16px' }} viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+            </svg>
+            הוסף מיומנות
+          </button>
+        ) : (
+          <div style={{ 
+            border: '1px solid #e0e0e0', 
+            borderRadius: '4px', 
+            padding: '16px',
+            backgroundColor: 'rgba(0, 0, 0, 0.02)'
+          }}>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: '4px', 
+                fontSize: '14px', 
+                fontWeight: '500',
+                textAlign: 'right'
+              }}>
+                שם המיומנות
+              </label>
+              <input
+                type="text"
+                value={currentSkill.name}
+                onChange={(e) => handleInputChange('name', e.target.value)}
+                placeholder="לדוגמה: JavaScript, פוטושופ, ניהול פרויקטים"
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '4px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  direction: 'rtl',
+                  textAlign: 'right'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+                onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+              />
+            </div>
 
-                {showSkillForm ? (
-                  <Box sx={{ mt: 3 }}>
-                    <Grid container spacing={2}>
-                      {/* בחר מיומנות מתוך רשימה */}
-                      <Grid item xs={12} sm={5}>
-                        <FormControl fullWidth>
-                          <InputLabel>בחר מיומנות</InputLabel>
-                          <Select
-                            value={selectedSkill}
-                            onChange={(e) => setSelectedSkill(e.target.value as string)}
-                            label="בחר מיומנות"
-                          >
-                            {predefinedSkills.map((skill) => (
-                              <MenuItem key={skill} value={skill}>
-                                {skill}
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-                      </Grid>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: '4px', 
+                fontSize: '14px', 
+                fontWeight: '500',
+                textAlign: 'right'
+              }}>
+                רמת מיומנות
+              </label>
+              <select
+                value={currentSkill.level}
+                onChange={(e) => handleInputChange('level', e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '4px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  direction: 'rtl',
+                  textAlign: 'right',
+                  backgroundColor: 'white'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+                onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+              >
+                <option value="">בחר רמת מיומנות</option>
+                {levelOptions.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-                      {/* בחר רמה */}
-                      <Grid item xs={12} sm={5}>
-                        <FormControl fullWidth>
-                          <InputLabel>רמה</InputLabel>
-                          <Select
-                            value={selectedLevel}
-                            onChange={(e) => setSelectedLevel(e.target.value as string)}
-                            label="רמה"
-                          >
-                            {skillLevels.map((level) => (
-                              <MenuItem key={level} value={level}>
-                                {level}
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-                      </Grid>
-
-                      {/* כפתור הוספה */}
-                      <Grid item xs={12} sm={2}>
-                        <Button
-                          variant="contained"
-                          onClick={handleAddSkill}
-                          fullWidth
-                          sx={{ height: "100%" }}
-                        >
-                          הוסף
-                        </Button>
-                      </Grid>
-
-                      {/* מיומנות מותאמת אישית */}
-                      <Grid item xs={12}>
-                        <TextField
-                          label="או כתוב מיומנות משלך"
-                          value={customSkill}
-                          onChange={(e) => setCustomSkill(e.target.value)}
-                          fullWidth
-                        />
-                      </Grid>
-                    </Grid>
-
-                    {error && (
-                      <Typography color="error" mt={2}>
-                        {error}
-                      </Typography>
-                    )}
-                    
-                    <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
-                      <Button 
-                        variant="outlined" 
-                        onClick={() => {
-                          setShowSkillForm(false);
-                          setError("");
-                        }}
-                      >
-                        ביטול
-                      </Button>
-                    </Box>
-                  </Box>
-                ) : (
-                  <Box sx={{ mt: 3, textAlign: 'center' }}>
-                    <Button
-                      color="primary"
-                      startIcon={<AddIcon />}
-                      onClick={() => setShowSkillForm(true)}
-                      sx={{ 
-                        color: '#1976d2',
-                        textTransform: 'none',
-                        fontWeight: 'normal'
-                      }}
-                    >
-                      הוסף מיומנות
-                    </Button>
-                  </Box>
-                )}
-              </CardContent>
-            </Collapse>
-          </Card>
-        </Box>
-      </ThemeProvider>
-    </CacheProvider>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+              <button
+                onClick={handleCancel}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#f3f4f6',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '4px',
+                  color: '#374151',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  outline: 'none'
+                }}
+              >
+                ביטול
+              </button>
+              <button
+                onClick={handleAddSkill}
+                disabled={!currentSkill.name.trim()}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: currentSkill.name.trim() ? '#4caf50' : '#ccc',
+                  border: 'none',
+                  borderRadius: '4px',
+                  color: 'white',
+                  fontSize: '14px',
+                  cursor: currentSkill.name.trim() ? 'pointer' : 'not-allowed',
+                  outline: 'none'
+                }}
+              >
+                {editingIndex >= 0 ? 'עדכן' : 'הוסף'} מיומנות
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
-}
-                 
+};
+
+export default SkillSection;

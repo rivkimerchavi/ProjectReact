@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TextField, Button, Container, Typography, Box, Divider } from '@mui/material';
 
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const Login = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -58,30 +60,98 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      const response = await fetch("http://localhost:5227/api/User/login", {
+      console.log('🔄 Attempting login with:', { 
+        email: formData.email, 
+        password: '***' 
+      });
+
+      const loginPayload = {
+        email: formData.email,
+        password: formData.password
+      };
+
+      console.log('📤 Sending login request to:', `${API_BASE_URL}/api/User/login`);
+      console.log('📤 Request payload:', loginPayload);
+
+      const response = await fetch(`${API_BASE_URL}/api/User/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-        }),
+        body: JSON.stringify(loginPayload),
       });
       
+      console.log('📥 Response status:', response.status);
+      console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()));
+
+      // קרא את התגובה כטקסט קודם כדי לראות מה השרת מחזיר
+      const responseText = await response.text();
+      console.log('📥 Raw response:', responseText);
+
       if (response.ok) {
-        const data = await response.json();
-        console.log("Login successful", data);
-        localStorage.setItem("token", data.token);
-        // userStore.login({ email: formData.email, password: formData.password });
-        navigate('/templateList'); // או לכל דף שרוצה
+        let data;
+        try {
+          data = JSON.parse(responseText);
+          console.log("✅ Login successful:", data);
+          
+          // שמירת הטוקן - עם כל האפשרויות
+          if (data.token) {
+            localStorage.setItem("token", data.token);
+            localStorage.setItem("jwtToken", data.token);
+            localStorage.setItem("authToken", data.token);
+            localStorage.setItem("accessToken", data.token);
+            console.log("💾 Token saved successfully");
+          }
+          
+          // שמירת user ID אם קיים
+          if (data.userId) {
+            localStorage.setItem("userId", data.userId);
+            console.log("💾 User ID saved:", data.userId);
+          }
+
+          // ניווט לדף הבא
+          console.log("🔄 Navigating to /templateList");
+          navigate('/templateList');
+          
+        } catch (parseError) {
+          console.error("❌ Failed to parse JSON response:", parseError);
+          setLoginError("שגיאה בפרסור תגובת השרת");
+        }
       } else {
-        throw new Error('Login failed');
+        // טיפול בשגיאות HTTP
+        console.error(`❌ HTTP Error ${response.status}:`, responseText);
+        
+        let errorMessage = "התחברות נכשלה";
+        
+        try {
+          const errorData = JSON.parse(responseText);
+          if (errorData.message) {
+            errorMessage = errorData.message;
+          }
+        } catch (e) {
+          // אם לא ניתן לפרסר את השגיאה כ-JSON
+          if (response.status === 401) {
+            errorMessage = "אימייל או סיסמה שגויים";
+          } else if (response.status === 400) {
+            errorMessage = "נתונים לא תקינים";
+          } else if (response.status === 500) {
+            errorMessage = "שגיאת שרת פנימית";
+          } else {
+            errorMessage = `שגיאת שרת: ${response.status}`;
+          }
+        }
+        
+        setLoginError(errorMessage);
       }
       
     } catch (error) {
-      console.error("Login failed", error);
-      setLoginError("התחברות נכשלה. אנא בדוק את פרטי הכניסה ונסה שוב.");
+      console.error("❌ Network/Fetch Error:", error);
+      
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        setLoginError("לא ניתן להתחבר לשרת. בדוק שהשרת פועל.");
+      } else {
+        setLoginError("שגיאת רשת. אנא בדוק את החיבור לאינטרנט.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -99,13 +169,38 @@ const Login = () => {
   };
 
   const handleForgotPassword = () => {
-    // Navigate to forgot password page or show dialog
-    navigate('/forgot-password'); // או תציג דיאלוג
+    navigate('/forgot-password');
   };
 
   const handleGoToRegister = () => {
-    navigate('/register'); // מעבר לדף הרשמה
+    navigate('/register');
   };
+
+  // פונקציה לבדיקת הדטה בשרת
+  // const testServerConnection = async () => {
+  //   try {
+  //     console.log('🔍 Testing server connection...');
+  //     const response = await fetch("http://localhost:5227/api/User", {
+  //       method: 'GET',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //       },
+  //     });
+  //     console.log('🔍 Server test response:', response.status);
+  //     if (response.ok) {
+  //       console.log('✅ Server is accessible');
+  //     } else {
+  //       console.log('⚠️ Server responded with status:', response.status);
+  //     }
+  //   } catch (error) {
+  //     console.error('❌ Server connection test failed:', error);
+  //   }
+  // };
+
+  // // הוסף כפתור בדיקה בטופס (זמני)
+  // const handleTestConnection = () => {
+  //   testServerConnection();
+  // };
 
   return (
     <Box
@@ -244,6 +339,22 @@ const Login = () => {
           <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#374151', textAlign: 'center', mb: 3 }}>
             התחברות
           </Typography>
+
+          {/* Test Connection Button (זמני לדיבוג) */}
+          <Button
+            onClick={handleTestConnection}
+            fullWidth
+            variant="outlined"
+            sx={{
+              mb: 2,
+              py: 1,
+              borderColor: '#e5e7eb',
+              color: '#6b7280',
+              fontSize: '0.875rem'
+            }}
+          >
+            🔍 בדוק חיבור לשרת (דיבוג)
+          </Button>
 
           {/* Google Login Button */}
           <Button

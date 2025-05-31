@@ -1,30 +1,34 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Box,
-  Typography,
   Button,
+  Divider,
+  Grid,
+  IconButton,
+  Paper,
   TextField,
+  Typography,
+  Collapse,
+  Fade,
+  Grow,
+  Chip,
+  Tooltip,
+  useTheme,
   Checkbox,
   FormControlLabel,
   MenuItem,
   Select,
   InputLabel,
   FormControl,
-  IconButton,
-  Card,
-  CardHeader,
-  CardContent,
-  Collapse,
-  Divider,
-  Paper,
-  Grid,
-  Tooltip,
-  Popover
-} from "@mui/material";
+} from "@mui/material"
+
+// Icons
+import DeleteIcon from "@mui/icons-material/Delete"
+import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline"
+import CheckCircleIcon from "@mui/icons-material/CheckCircle"
 import {
-  HelpOutline as HelpIcon,
   Add as AddIcon,
-  Delete as DeleteIcon,
+  Delete as DeleteIcon2,
   FormatAlignLeft as FormatAlignLeftIcon,
   FormatAlignCenter as FormatAlignCenterIcon,
   FormatAlignJustify as FormatAlignJustifyIcon,
@@ -46,6 +50,7 @@ interface ExperienceData {
   endDate: { month: string; year: string };
   currentJob: boolean;
   experience: string;
+  formatting?: any;
 }
 
 const initialExperienceData: ExperienceData = {
@@ -215,11 +220,21 @@ const theme = createTheme({
 
 export default function EmploymentExperience({ 
   onFormChange, 
-  onExperienceListChange 
+  onExperienceListChange,
+  initialExperiences = [],
+  autoSave = true,
+  blockAutoSave = false,
+  manualSaveOnly = false
 }: { 
   onFormChange?: (data: any) => void;
   onExperienceListChange?: (experiences: ExperienceData[]) => void;
+  initialExperiences?: ExperienceData[];
+  autoSave?: boolean;
+  blockAutoSave?: boolean;
+  manualSaveOnly?: boolean;
 }) {
+  console.log('🏃‍♂️ EmploymentExperience התחיל עם initialExperiences:', initialExperiences);
+
   const [experienceData, setExperienceData] = useState<ExperienceData>(initialExperienceData);
   const [showForm, setShowForm] = useState(false);
   const [isExpanded, setIsExpanded] = useState(true);
@@ -239,7 +254,40 @@ export default function EmploymentExperience({
   const [showSuggestionsBox, setShowSuggestionsBox] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Array<{type: string, text: string, profession?: string}>>([]);
-  
+
+  // 🔧 טעינת נתונים קיימים
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const initialDataLoaded = useRef(false);
+  const onExperienceListChangeRef = useRef(onExperienceListChange);
+
+  // עדכון ה-ref כאשר הפונקציה משתנה
+  useEffect(() => {
+    onExperienceListChangeRef.current = onExperienceListChange;
+  }, [onExperienceListChange]);
+
+  // 🔥 טעינת נתונים ראשוניים - רק פעם אחת!
+  useEffect(() => {
+    console.log('🔄 EmploymentExperience useEffect רץ עם initialExperiences:', initialExperiences);
+    
+    if (!initialDataLoaded.current) {
+      if (initialExperiences && initialExperiences.length > 0) {
+        console.log('✅ מעדכן רשימת ניסיון עם נתונים ראשוניים:', initialExperiences);
+        setExperiences(initialExperiences);
+      }
+      
+      initialDataLoaded.current = true;
+      setIsInitialLoad(false);
+    }
+  }, [initialExperiences]);
+
+  // useEffect לשליחת נתונים לparent - רק אחרי הטעינה הראשונית
+  useEffect(() => {
+    if (!isInitialLoad && onExperienceListChangeRef.current && !blockAutoSave && autoSave && !manualSaveOnly) {
+      console.log('📤 שולח רשימת ניסיון לparent:', experiences);
+      onExperienceListChangeRef.current(experiences);
+    }
+  }, [experiences, isInitialLoad, blockAutoSave, autoSave, manualSaveOnly]);
+
   const handleMouseOverHelp = (event: React.MouseEvent<HTMLElement>) => {
     setHelpAnchorEl(event.currentTarget);
   };
@@ -311,8 +359,8 @@ export default function EmploymentExperience({
 
   const handleChange = (field: keyof ExperienceData, value: any) => {
     const updatedData = { ...experienceData, [field]: value };
+    console.log(`📝 שדה ${field} השתנה ל:`, value);
     setExperienceData(updatedData);
-    // הסרנו את הקריאה ל-onFormChange כאן כדי למנוע כפילויות
   };
 
   const handleDateChange = (type: "startDate" | "endDate", field: "month" | "year", value: string) => {
@@ -321,7 +369,6 @@ export default function EmploymentExperience({
       [type]: { ...experienceData[type], [field]: value },
     };
     setExperienceData(updatedData);
-    // הסרנו את הקריאה ל-onFormChange כאן כדי למנוע כפילויות
   };
 
   const handleAddExperience = () => {
@@ -343,12 +390,8 @@ export default function EmploymentExperience({
       updatedExperiences = [...experiences, experienceWithFormatting];
     }
     
+    console.log('💼 הוסף/עדכן ניסיון:', experienceWithFormatting);
     setExperiences(updatedExperiences);
-    
-    // עכשיו נקרא לפונקציות הקולבק עם הרשימה המעודכנת
-    if (onExperienceListChange) {
-      onExperienceListChange(updatedExperiences);
-    }
     
     setExperienceData(initialExperienceData);
     setTextFormat({ bold: false, italic: false, underline: false, align: 'right' }); // איפוס העיצוב
@@ -359,6 +402,26 @@ export default function EmploymentExperience({
     setExperienceData(initialExperienceData);
     setShowForm(false);
     setEditingIndex(-1);
+  };
+
+  const handleDeleteExperience = (index: number) => {
+    const updatedExperiences = experiences.filter((_, i) => i !== index);
+    console.log('🗑️ מחק ניסיון:', index);
+    setExperiences(updatedExperiences);
+  };
+
+  const handleEditExperience = (index: number) => {
+    const expToEdit = experiences[index];
+    console.log('✏️ ערוך ניסיון:', expToEdit);
+    setExperienceData(expToEdit);
+    
+    // שחזר את העיצוב אם קיים
+    if (expToEdit.formatting) {
+      setTextFormat(expToEdit.formatting);
+    }
+    
+    setEditingIndex(index);
+    setShowForm(true);
   };
 
   const monthOptions = ["ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"];
@@ -372,103 +435,124 @@ export default function EmploymentExperience({
         direction: 'rtl',
         fontFamily: "'Assistant', 'Segoe UI', 'Tahoma', 'Arial', sans-serif"
       }}>
-        <Card elevation={0} sx={{ maxWidth: 800, mx: "auto", mt: 3, border: "1px solid #d0d0d0", boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderRadius: '8px', overflow: 'hidden' }}>
-          <CardHeader
-            title={
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center',
-                justifyContent: 'flex-start',
-                direction: 'rtl',
-                textAlign: 'right',
-                gap: '8px'
-              }}>
-                <Typography variant="h6" component="h2" sx={{ 
-                  fontWeight: 600, 
-                  fontSize: '0.95rem',
-                  color: '#333'
-                }}>
-                  ניסיון תעסוקתי
-                </Typography>
-                <div 
-                  title={helpText.main}
-                  style={{ 
-                    cursor: 'help',
-                    position: 'relative',
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}
-                  onMouseOver={handleMouseOverHelp}
-                  onMouseOut={handleMouseOutHelp}
-                >
-                  <svg style={{ width: '18px', height: '18px', fill: '#757575' }} viewBox="0 0 24 24">
-                    <path d="M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z" />
-                  </svg>
-                  <div 
-                    id="employment-tooltip"
-                    style={{
-                      display: Boolean(helpAnchorEl) ? 'block' : 'none',
-                      position: 'absolute',
-                      top: '25px',
-                      right: '-10px',
-                      width: '200px',
-                      backgroundColor: '#626262',
-                      color: '#ffffff',
-                      padding: '8px 12px',
-                      borderRadius: '4px',
-                      fontSize: '13px',
-                      boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
-                      zIndex: 1000,
-                      textAlign: 'right',
-                      direction: 'rtl'
-                    }}
-                  >
-                    {helpText.main}
-                  </div>
-                </div>
+        <div style={{ 
+          padding: '0', 
+          maxWidth: '1000px', 
+          margin: '16px auto',
+          background: '#ffffff',
+          fontFamily: 'Arial, sans-serif',
+          position: 'relative',
+          borderRadius: '8px',
+          overflow: 'hidden',
+          border: '1px solid #d0d0d0',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
+        }}>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            borderBottom: '1px solid #d0d0d0',
+            padding: '12px 16px',
+            backgroundColor: '#ffffff'
+          }}>
+            <div></div>
+            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>ניסיון תעסוקתי</h2>
+            <div 
+              title={helpText.main}
+              style={{ 
+                cursor: 'help',
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center'
+              }}
+              onMouseOver={handleMouseOverHelp}
+              onMouseOut={handleMouseOutHelp}
+            >
+              <svg style={{ width: '18px', height: '18px', fill: '#757575' }} viewBox="0 0 24 24">
+                <path d="M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z" />
+              </svg>
+              <span style={{ fontSize: '14px', color: '#333', fontWeight: 'bold', marginRight: '6px' }}>ניסיון תעסוקתי</span>
+              <div 
+                id="employment-tooltip"
+                style={{
+                  display: Boolean(helpAnchorEl) ? 'block' : 'none',
+                  position: 'absolute',
+                  top: '25px',
+                  right: '-10px',
+                  width: '200px',
+                  backgroundColor: '#626262',
+                  color: '#ffffff',
+                  padding: '8px 12px',
+                  borderRadius: '4px',
+                  fontSize: '13px',
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
+                  zIndex: 1000,
+                  textAlign: 'right',
+                  direction: 'rtl'
+                }}
+              >
+                {helpText.main}
               </div>
-            }
-            sx={{ 
-              borderBottom: "1px solid rgba(0, 0, 0, 0.05)",
-              py: 1.5,
-              backgroundColor: '#ffffff',
-            }}
-          />
+            </div>
+          </div>
           
           <Collapse in={isExpanded}>
-            <CardContent sx={{ direction: 'rtl' }}>
+            <div style={{ padding: '24px' }}>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 3, textAlign: 'right' }}>
                 הוסף/י את הניסיון המקצועי שלך מהשנים האחרונות, כאשר התפקיד האחרון יוצג ראשון
               </Typography>
 
               {experiences.length > 0 && !showForm && (
-                <Paper variant="outlined" sx={{ p: 2, mb: 3, direction: 'rtl' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <IconButton size="small">
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                    <div style={{ textAlign: 'right' }}>
-                      <Typography variant="subtitle1" component="div" sx={{ fontWeight: 500 }}>
-                        {experiences[0].position}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {experiences[0].company}
-                      </Typography>
-                    </div>
-                  </div>
-                  <Typography variant="body2" 
-                    dangerouslySetInnerHTML={{ 
-                      __html: experiences[0].experience.replace(/\n/g, '<br/>') 
-                    }} 
-                    sx={{ 
-                      fontSize: '0.875rem',
-                      lineHeight: 1.5,
-                      color: '#555',
-                      textAlign: 'right',
-                      direction: 'rtl'
-                    }}
-                  />
-                </Paper>
+                <div style={{ marginBottom: '16px' }}>
+                  {experiences.map((exp, index) => (
+                    <Paper key={index} variant="outlined" sx={{ p: 2, mb: 2, direction: 'rtl' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <IconButton 
+                            size="small" 
+                            onClick={() => handleDeleteExperience(index)}
+                            sx={{ color: '#ef4444' }}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton 
+                            size="small" 
+                            onClick={() => handleEditExperience(index)}
+                            sx={{ color: '#3b82f6' }}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                            </svg>
+                          </IconButton>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <Typography variant="subtitle1" component="div" sx={{ fontWeight: 500 }}>
+                            {exp.position}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {exp.company}
+                          </Typography>
+                        </div>
+                      </div>
+                      {exp.experience && (
+                        <Typography 
+                          variant="body2" 
+                          dangerouslySetInnerHTML={{ 
+                            __html: exp.experience.replace(/\n/g, '<br/>') 
+                          }} 
+                          sx={{ 
+                            fontSize: '0.875rem',
+                            lineHeight: 1.5,
+                            color: '#555',
+                            textAlign: 'right',
+                            direction: 'rtl',
+                            whiteSpace: 'pre-wrap'
+                          }}
+                        />
+                      )}
+                    </Paper>
+                  ))}
+                </div>
               )}
 
               {!showForm ? (
@@ -898,11 +982,13 @@ export default function EmploymentExperience({
                               fontStyle: textFormat.italic ? 'italic' : 'normal',
                               textDecoration: textFormat.underline ? 'underline' : 'none',
                               direction: 'rtl',
+                              whiteSpace: 'pre-wrap',
                               '& textarea': {
                                 textAlign: textFormat.align,
                                 fontWeight: textFormat.bold ? 'bold' : 'normal',
                                 fontStyle: textFormat.italic ? 'italic' : 'normal',
                                 textDecoration: textFormat.underline ? 'underline' : 'none',
+                                whiteSpace: 'pre-wrap',
                               }
                             }
                           }}
@@ -912,12 +998,13 @@ export default function EmploymentExperience({
                               fontWeight: textFormat.bold ? 'bold' : 'normal',
                               fontStyle: textFormat.italic ? 'italic' : 'normal',
                               textDecoration: textFormat.underline ? 'underline' : 'none',
+                              whiteSpace: 'pre-wrap',
                             }
                           }}
                         />
                       </Paper>
                       
-                      {/* פופ-אפ למשפטים מוכנים בסגנון החדש */}
+                      {/* פופ-אפ למשפטים מוכנים */}
                       {showSuggestionsBox && (
                         <div style={{
                           position: 'fixed',
@@ -1186,10 +1273,10 @@ export default function EmploymentExperience({
                     </div>
                   </Paper>
                 )}
-              </CardContent>
+              </div>
             </Collapse>
-          </Card>
         </div>
-      </ThemeProvider>
+      </div>
+    </ThemeProvider>
   );
 }

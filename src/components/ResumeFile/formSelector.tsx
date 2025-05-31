@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   Box,
   Button,
@@ -33,15 +33,58 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle"
 
 export default function FormSelector({
   onFormDataChange,
+  initialData = {},
+  autoSave = true,
+  blockAutoSave = false,
+  manualSaveOnly = false
 }: {
-  onFormDataChange: (formType: string, data: string[][]) => void
+  onFormDataChange: (formType: string, data: string[][]) => void;
+  initialData?: Record<string, string[][]>;
+  autoSave?: boolean;
+  blockAutoSave?: boolean;
+  manualSaveOnly?: boolean;
 }) {
+  console.log('🏃‍♂️ FormSelector התחיל עם initialData:', initialData);
+
   const [selectedForm, setSelectedForm] = useState("")
   const [formValues, setFormValues] = useState<{ [key: string]: string[][] }>({})
   const [activeForm, setActiveForm] = useState<string | null>(null)
   const [allFormData, setAllFormData] = useState<Record<string, string[][]>>({})
   const [formCounts, setFormCounts] = useState<Record<string, number>>({})
   const theme = useTheme()
+
+  // 🔧 טעינת נתונים קיימים
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const initialDataLoaded = useRef(false);
+  const onFormDataChangeRef = useRef(onFormDataChange);
+
+  // עדכון ה-ref כאשר הפונקציה משתנה
+  useEffect(() => {
+    onFormDataChangeRef.current = onFormDataChange;
+  }, [onFormDataChange]);
+
+  // 🔥 טעינת נתונים ראשוניים - רק פעם אחת!
+  useEffect(() => {
+    console.log('🔄 FormSelector useEffect רץ עם initialData:', initialData);
+    
+    if (!initialDataLoaded.current) {
+      if (initialData && Object.keys(initialData).length > 0) {
+        console.log('✅ מעדכן נתונים נוספים עם נתונים ראשוניים:', initialData);
+        setFormValues(initialData);
+        setAllFormData(initialData);
+        
+        // עדכון מונים
+        const counts = {};
+        Object.entries(initialData).forEach(([key, data]) => {
+          counts[key] = data ? data.length : 0;
+        });
+        setFormCounts(counts);
+      }
+      
+      initialDataLoaded.current = true;
+      setIsInitialLoad(false);
+    }
+  }, [initialData]);
 
   const handleFormChange = (formType: string, data: string[][]) => {
     const existing = formValues[formType] || []
@@ -52,9 +95,16 @@ export default function FormSelector({
     )
 
     const updated = { ...formValues, [formType]: merged }
+    console.log(`📝 ${formType} השתנה ל:`, merged);
+    
     setFormValues(updated)
     setAllFormData(updated)
-    onFormDataChange(formType, merged)
+    
+    // שליחה לparent רק אם לא חסום
+    if (!isInitialLoad && onFormDataChangeRef.current && !blockAutoSave && autoSave && !manualSaveOnly) {
+      console.log(`📤 שולח ${formType} לparent:`, merged);
+      onFormDataChangeRef.current(formType, merged);
+    }
 
     // Update counts
     setFormCounts((prev) => ({
@@ -93,104 +143,164 @@ export default function FormSelector({
   ]
 
   return (
-    <Paper
-      elevation={3}
-      sx={{
-        p: 4,
-        borderRadius: 2,
-        transition: "all 0.3s ease",
-        overflow: "hidden",
-        boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
-      }}
-    >
-      <Typography
-        variant="h5"
-        gutterBottom
-        sx={{
-          fontWeight: 600,
-          textAlign: "right",
-          mb: 2,
-          color: theme.palette.primary.main,
-        }}
-      >
-        בחר קטגוריה להוספת פרטים
-      </Typography>
+    <div style={{ 
+      padding: '0', 
+      maxWidth: '1000px', 
+      margin: '16px auto',
+      background: '#ffffff',
+      fontFamily: 'Arial, sans-serif',
+      position: 'relative',
+      borderRadius: '8px',
+      overflow: 'hidden',
+      border: '1px solid #d0d0d0',
+      boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
+    }}>
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        borderBottom: '1px solid #d0d0d0',
+        padding: '12px 16px',
+        backgroundColor: '#ffffff'
+      }}>
+        <div></div>
+        <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>פרטים נוספים</h2>
+        <div 
+          title="הוסף פרטים נוספים כמו שפות, שירות צבאי, קורסים והתנדבויות"
+          style={{ 
+            cursor: 'help',
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center'
+          }}
+          onMouseOver={() => {
+            const tooltip = document.getElementById('form-selector-tooltip');
+            if (tooltip) tooltip.style.display = 'block';
+          }}
+          onMouseOut={() => {
+            const tooltip = document.getElementById('form-selector-tooltip');
+            if (tooltip) tooltip.style.display = 'none';
+          }}
+        >
+          <svg style={{ width: '18px', height: '18px', fill: '#757575' }} viewBox="0 0 24 24">
+            <path d="M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z" />
+          </svg>
+          <span style={{ fontSize: '14px', color: '#333', fontWeight: 'bold', marginRight: '6px' }}>פרטים נוספים</span>
+          <div 
+            id="form-selector-tooltip"
+            style={{
+              display: 'none',
+              position: 'absolute',
+              top: '25px',
+              right: '-10px',
+              width: '200px',
+              backgroundColor: '#626262',
+              color: '#ffffff',
+              padding: '8px 12px',
+              borderRadius: '4px',
+              fontSize: '13px',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
+              zIndex: 1000,
+              textAlign: 'right',
+              direction: 'rtl'
+            }}
+          >
+            הוסף פרטים נוספים כמו שפות, שירות צבאי, קורסים והתנדבויות
+          </div>
+        </div>
+      </div>
 
-      <Divider sx={{ mb: 3 }} />
+      <div style={{ padding: '24px' }}>
+        <Typography
+          variant="h5"
+          gutterBottom
+          sx={{
+            fontWeight: 600,
+            textAlign: "right",
+            mb: 2,
+            color: theme.palette.primary.main,
+            fontSize: '16px'
+          }}
+        >
+          בחר קטגוריה להוספת פרטים
+        </Typography>
 
-      <Grid container spacing={2}>
-        {formButtons.map(({ key, label, icon }) => {
-          const count = formCounts[key] || 0
-          return (
-            <Grid item xs={12} sm={6} md={4} key={key}>
-              <Box
-                sx={{
-                  transition: "transform 0.2s ease",
-                  "&:hover": {
-                    transform: "scale(1.02)",
-                  },
-                  "&:active": {
-                    transform: "scale(0.98)",
-                  },
-                }}
-              >
-                <Button
-                  fullWidth
-                  variant={activeForm === key ? "contained" : "outlined"}
-                  color="primary"
-                  startIcon={icon}
-                  onClick={() => handleButtonClick(key)}
+        <Divider sx={{ mb: 3 }} />
+
+        <Grid container spacing={2}>
+          {formButtons.map(({ key, label, icon }) => {
+            const count = formCounts[key] || 0
+            return (
+              <Grid item xs={12} sm={6} md={4} key={key}>
+                <Box
                   sx={{
-                    p: 1.5,
-                    justifyContent: "flex-start",
-                    borderRadius: 2,
-                    position: "relative",
-                    overflow: "hidden",
-                    transition: "all 0.2s ease",
-                    boxShadow: activeForm === key ? 3 : 0,
+                    transition: "transform 0.2s ease",
                     "&:hover": {
-                      boxShadow: 2,
+                      transform: "scale(1.02)",
+                    },
+                    "&:active": {
+                      transform: "scale(0.98)",
                     },
                   }}
                 >
-                  <Box sx={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
-                    {label}
-                    {count > 0 && (
-                      <Chip
-                        size="small"
-                        label={count}
-                        color="primary"
-                        sx={{
-                          ml: 1,
-                          fontWeight: "bold",
-                          backgroundColor: theme.palette.primary.light,
-                        }}
-                      />
-                    )}
-                  </Box>
-                </Button>
-              </Box>
-            </Grid>
-          )
-        })}
-      </Grid>
+                  <Button
+                    fullWidth
+                    variant={activeForm === key ? "contained" : "outlined"}
+                    color="primary"
+                    startIcon={icon}
+                    onClick={() => handleButtonClick(key)}
+                    sx={{
+                      p: 1.5,
+                      justifyContent: "flex-start",
+                      borderRadius: 2,
+                      position: "relative",
+                      overflow: "hidden",
+                      transition: "all 0.2s ease",
+                      boxShadow: activeForm === key ? 3 : 0,
+                      "&:hover": {
+                        boxShadow: 2,
+                      },
+                    }}
+                  >
+                    <Box sx={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
+                      {label}
+                      {count > 0 && (
+                        <Chip
+                          size="small"
+                          label={count}
+                          color="primary"
+                          sx={{
+                            ml: 1,
+                            fontWeight: "bold",
+                            backgroundColor: theme.palette.primary.light,
+                          }}
+                        />
+                      )}
+                    </Box>
+                  </Button>
+                </Box>
+              </Grid>
+            )
+          })}
+        </Grid>
 
-      <Collapse in={activeForm !== null}>
-        <Box sx={{ mt: 4 }}>
-          {activeForm && (
-            <Fade in={true}>
-              <div>
-                <FormContent
-                  formType={activeForm}
-                  initialData={allFormData[activeForm] || []}
-                  onDataChange={handleFormChange}
-                />
-              </div>
-            </Fade>
-          )}
-        </Box>
-      </Collapse>
-    </Paper>
+        <Collapse in={activeForm !== null}>
+          <Box sx={{ mt: 4 }}>
+            {activeForm && (
+              <Fade in={true}>
+                <div>
+                  <FormContent
+                    formType={activeForm}
+                    initialData={allFormData[activeForm] || []}
+                    onDataChange={handleFormChange}
+                  />
+                </div>
+              </Fade>
+            )}
+          </Box>
+        </Collapse>
+      </div>
+    </div>
   )
 }
 
@@ -260,7 +370,16 @@ const DynamicForm = ({
   const [successMessage, setSuccessMessage] = useState<boolean>(false)
   const theme = useTheme()
 
+  // 🔧 עדכון entries כאשר initialData משתנה
+  useEffect(() => {
+    if (initialData.length > 0) {
+      console.log(`🔄 DynamicForm ${formType} עודכן עם initialData:`, initialData);
+      setEntries(initialData);
+    }
+  }, [initialData, formType]);
+
   const updateEntries = (newEntries: string[][]) => {
+    console.log(`📝 DynamicForm ${formType} - עדכון entries:`, newEntries);
     setEntries(newEntries)
     onDataChange(formType, newEntries)
   }

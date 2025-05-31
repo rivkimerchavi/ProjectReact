@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Edit, Trash2, Plus, AlertCircle, Loader, RefreshCw, Download, Share2, FileText, Sparkles, Clock, CheckCircle2 } from 'lucide-react';
+import { Edit, Trash2, Plus, AlertCircle, Loader, RefreshCw, Download, Share2, FileText, Sparkles, Clock, CheckCircle2, MoreVertical } from 'lucide-react';
 
 const ResumeGallery = ({ onEditResume }) => {
   const [resumes, setResumes] = useState([]);
@@ -9,10 +9,10 @@ const ResumeGallery = ({ onEditResume }) => {
   const [coverLetterLoading, setCoverLetterLoading] = useState(null);
   const [coverLetterModal, setCoverLetterModal] = useState(null);
   const [jobDescription, setJobDescription] = useState('');
+  const [hoveredCard, setHoveredCard] = useState(null);
   
   // קונפיגורציה
-  const API_BASE_URL = 'http://localhost:5227';
-  
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
   // פונקציה לקבלת טוקן
   const getAuthToken = useCallback(() => {
     return localStorage.getItem('jwtToken') || 
@@ -48,8 +48,38 @@ const ResumeGallery = ({ onEditResume }) => {
       }
 
       const data = await response.json();
-      setResumes(data || []);
+      
       console.log('✅ קורות חיים נטענו:', data);
+      console.log('📊 כמות קורות חיים:', data ? data.length : 0);
+      
+      if (data && data.length > 0) {
+        console.log('🔍 בדיקה מפורטת של הרשומה הראשונה:');
+        console.log('📋 כל השדות:', Object.keys(data[0]));
+        console.log('📋 פרטים מלאים:', data[0]);
+        console.log('🖼️ fileUrl:', data[0].fileUrl);
+        console.log('🖼️ path:', data[0].path);
+        console.log('📄 fileName:', data[0].fileName);
+        console.log('🆔 id:', data[0].id);
+        console.log('📅 createdAt:', data[0].createdAt);
+        
+        // בדיקה של כל הרשומות
+        data.forEach((resume, index) => {
+          console.log(`📝 רשומה ${index + 1}:`, {
+            id: resume.id,
+            fileName: resume.fileName,
+            fileUrl: resume.fileUrl,
+            path: resume.path,
+            hasFileUrl: !!resume.fileUrl,
+            hasPath: !!resume.path,
+            fileUrlLength: resume.fileUrl ? resume.fileUrl.length : 0,
+            pathLength: resume.path ? resume.path.length : 0
+          });
+        });
+      } else {
+        console.log('❌ אין נתונים או מערך ריק');
+      }
+      
+      setResumes(data || []);
       
     } catch (error) {
       console.error('❌ שגיאה בטעינת קורות חיים:', error);
@@ -202,309 +232,55 @@ const ResumeGallery = ({ onEditResume }) => {
     }
   }, [onEditResume]);
 
-  // פונקציה לקבלת URL של התמונה
+  // פונקציה לקבלת URL של התמונה מ-AWS
   const getImageUrl = useCallback((resume) => {
-    const possibleImageFields = [
-      resume.path,
-      resume.imagePath,
-      resume.imageUrl,
-      resume.filePath,
-      resume.thumbnailPath,
-      resume.previewPath,
-      resume.url,
-      resume.s3Path,
-      resume.awsPath
-    ];
-
-    const imageUrl = possibleImageFields.find(field => field && field.trim());
+    console.log('🔍 getImageUrl רץ עבור resume:', resume);
     
-    if (imageUrl) {
-      let fullImageUrl = imageUrl;
+    const imageUrl = resume.path || resume.fileUrl || resume.image || resume.profileImage;
+    console.log('🖼️ שדה התמונה שנמצא:', imageUrl);
+    
+    if (imageUrl && imageUrl.trim()) {
+      console.log('✅ יש תמונה! imageUrl:', imageUrl);
       
-      if (!imageUrl.startsWith('http') && !imageUrl.startsWith('//')) {
-        fullImageUrl = `${API_BASE_URL}/${imageUrl}`;
+      if (imageUrl.startsWith('http') || imageUrl.startsWith('//')) {
+        console.log('🌐 זה URL מלא של AWS, מחזיר כמו שזה:', imageUrl);
+        return imageUrl;
       }
       
-      return fullImageUrl;
+      const awsUrl = `https://rrrrrrreeeee.s3.amazonaws.com/${imageUrl}`;
+      console.log('🔗 בונה URL ל-AWS S3:', awsUrl);
+      return awsUrl;
     }
     
+    console.log('❌ אין תמונה או שדה ריק');
     return null;
-  }, [API_BASE_URL]);
+  }, []);
 
   // טעינה ראשונית
   useEffect(() => {
     loadResumes();
   }, [loadResumes]);
 
-  // 🎨 עיצוב מתוקן
-  const styles = {
-    container: {
-      fontFamily: "'Assistant', -apple-system, BlinkMacSystemFont, sans-serif",
-      direction: 'rtl',
-      backgroundColor: '#f8fafc',
-      minHeight: '100vh',
-      padding: '0',
-    },
-    header: {
-      backgroundColor: 'white',
-      borderBottom: '1px solid #e2e8f0',
-      padding: '16px 24px',
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-    },
-    title: {
-      fontSize: '24px',
-      fontWeight: '700',
-      color: '#1e293b',
-      margin: 0,
-    },
-    createButton: {
-      background: '#3b82f6',
-      color: 'white',
-      border: 'none',
-      borderRadius: '8px',
-      padding: '12px 20px',
-      fontSize: '14px',
-      fontWeight: '600',
-      cursor: 'pointer',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px',
-      boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-      transition: 'all 0.2s ease',
-    },
-    mainContent: {
-      display: 'flex',
-      height: 'calc(100vh - 73px)',
-    },
-    sidebar: {
-      width: '280px',
-      backgroundColor: 'white',
-      borderLeft: '1px solid #e2e8f0',
-      padding: '24px 16px',
-      overflowY: 'auto',
-    },
-    contentArea: {
-      flex: 1,
-      padding: '24px',
-      overflowY: 'auto',
-    },
-    grid: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-      gap: '20px',
-      maxWidth: '1200px',
-    },
-    card: {
-      backgroundColor: 'white',
-      borderRadius: '12px',
-      border: '1px solid #e2e8f0',
-      overflow: 'hidden',
-      transition: 'all 0.2s ease',
-      cursor: 'default',
-      position: 'relative',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-    },
-    cardHover: {
-      transform: 'translateY(-2px)',
-      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-      borderColor: '#cbd5e1',
-    },
-    imageContainer: {
-      width: '100%',
-      height: '200px',
-      backgroundColor: '#f8fafc',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      position: 'relative',
-      overflow: 'hidden',
-      borderBottom: '1px solid #e2e8f0',
-    },
-    image: {
-      width: '100%',
-      height: '100%',
-      objectFit: 'cover',
-      transition: 'opacity 0.3s ease',
-    },
-    placeholderImage: {
-      width: '48px',
-      height: '48px',
-      backgroundColor: '#e2e8f0',
-      borderRadius: '8px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontSize: '20px',
-      color: '#94a3b8',
-    },
-    cardContent: {
-      padding: '16px',
-    },
-    fileName: {
-      fontSize: '14px',
-      fontWeight: '600',
-      color: '#1e293b',
-      marginBottom: '4px',
-      lineHeight: '1.4',
-      wordBreak: 'break-word',
-    },
-    dateInfo: {
-      fontSize: '12px',
-      color: '#64748b',
-      marginBottom: '12px',
-    },
-    actionsContainer: {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '8px',
-      marginTop: '12px',
-    },
-    actionRow: {
-      display: 'flex',
-      gap: '8px',
-    },
-    actionButton: {
-      flex: 1,
-      padding: '8px 12px',
-      borderRadius: '6px',
-      border: 'none',
-      cursor: 'pointer',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: '6px',
-      fontSize: '12px',
-      fontWeight: '500',
-      transition: 'all 0.2s ease',
-    },
-    editButton: {
-      backgroundColor: '#3b82f6',
-      color: 'white',
-    },
-    deleteButton: {
-      backgroundColor: '#ef4444',
-      color: 'white',
-    },
-    coverLetterButton: {
-      backgroundColor: '#10b981',
-      color: 'white',
-      width: '100%',
-    },
-    // Modal styles
-    modalOverlay: {
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-    },
-    modal: {
-      backgroundColor: 'white',
-      borderRadius: '12px',
-      padding: '24px',
-      width: '90%',
-      maxWidth: '500px',
-      maxHeight: '80vh',
-      overflow: 'auto',
-      boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)',
-    },
-    modalTitle: {
-      fontSize: '18px',
-      fontWeight: '600',
-      color: '#1e293b',
-      marginBottom: '16px',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px',
-    },
-    textarea: {
-      width: '100%',
-      minHeight: '120px',
-      padding: '12px',
-      border: '1px solid #e2e8f0',
-      borderRadius: '8px',
-      fontSize: '14px',
-      fontFamily: 'inherit',
-      resize: 'vertical',
-      outline: 'none',
-      transition: 'border-color 0.2s ease',
-    },
-    modalButtons: {
-      display: 'flex',
-      gap: '12px',
-      marginTop: '16px',
-    },
-    modalButton: {
-      flex: 1,
-      padding: '10px 16px',
-      borderRadius: '8px',
-      border: 'none',
-      cursor: 'pointer',
-      fontSize: '14px',
-      fontWeight: '500',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: '6px',
-      transition: 'all 0.2s ease',
-    },
-    generateButton: {
-      backgroundColor: '#10b981',
-      color: 'white',
-    },
-    cancelButton: {
-      backgroundColor: '#f1f5f9',
-      color: '#64748b',
-      border: '1px solid #e2e8f0',
-    },
-    loadingContainer: {
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      height: '400px',
-      color: '#64748b',
-    },
-    errorContainer: {
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      height: '400px',
-      color: '#ef4444',
-      textAlign: 'center',
-    },
-    emptyState: {
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      height: '400px',
-      color: '#64748b',
-      textAlign: 'center',
-    },
-  };
-
   // Loading state
   if (loading) {
     return (
-      <div style={styles.container}>
-        <div style={styles.header}>
-          <h1 style={styles.title}>המסמכים שלי</h1>
-        </div>
-        <div style={styles.mainContent}>
-          <div style={styles.loadingContainer}>
-            <Loader size={32} className="animate-spin" />
-            <p style={{ marginTop: '16px', fontSize: '14px' }}>טוען קורות חיים...</p>
-          </div>
+      <div style={{
+        fontFamily: "'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif",
+        direction: 'rtl',
+        backgroundColor: '#f8f9fa',
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '16px'
+        }}>
+          <Loader size={40} style={{ animation: 'spin 1s linear infinite', color: '#4285f4' }} />
+          <p style={{ fontSize: '16px', color: '#5f6368', margin: 0 }}>טוען קורות חיים...</p>
         </div>
       </div>
     );
@@ -513,111 +289,319 @@ const ResumeGallery = ({ onEditResume }) => {
   // Error state
   if (error) {
     return (
-      <div style={styles.container}>
-        <div style={styles.header}>
-          <h1 style={styles.title}>המסמכים שלי</h1>
-        </div>
-        <div style={styles.mainContent}>
-          <div style={styles.errorContainer}>
-            <AlertCircle size={32} />
-            <h3 style={{ margin: '16px 0 8px', fontSize: '16px', fontWeight: '600' }}>שגיאה</h3>
-            <p style={{ margin: '0 0 16px', fontSize: '14px' }}>{error}</p>
-            <button onClick={loadResumes} style={{...styles.createButton, backgroundColor: '#3b82f6'}}>
-              <RefreshCw size={14} />
-              נסה שוב
-            </button>
-          </div>
+      <div style={{
+        fontFamily: "'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif",
+        direction: 'rtl',
+        backgroundColor: '#f8f9fa',
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '16px',
+          padding: '40px',
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+        }}>
+          <AlertCircle size={40} style={{ color: '#ea4335' }} />
+          <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#202124' }}>שגיאה</h3>
+          <p style={{ margin: 0, fontSize: '14px', color: '#5f6368', textAlign: 'center' }}>{error}</p>
+          <button 
+            onClick={loadResumes}
+            style={{
+              background: '#4285f4',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '10px 20px',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <RefreshCw size={16} />
+            נסה שוב
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={styles.container}>
+    <div style={{
+      fontFamily: "'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif",
+      direction: 'rtl',
+      backgroundColor: '#f8f9fa', // רקע ניטרלי לכל הדף
+      minHeight: '100vh',
+      margin: 0,
+      padding: 0
+    }}>
       {/* Header */}
-      <div style={styles.header}>
-        <h1 style={styles.title}>המסמכים שלי</h1>
-        <button onClick={createNewResume} style={styles.createButton}>
-          <Plus size={16} />
-          יצירת קורות חיים חדשים
+      <div style={{
+        backgroundColor: 'white',
+        padding: '12px 24px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        borderBottom: '1px solid #e1e5e9',
+        position: 'sticky',
+        top: 0,
+        zIndex: 100
+      }}>
+        {/* Left side - Logo */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <span style={{
+            fontSize: '18px',
+            fontWeight: '500',
+            color: '#4285f4'
+          }}>
+            ResumeBuilder
+          </span>
+          <div style={{
+            backgroundColor: '#4285f4',
+            color: 'white',
+            padding: '2px 6px',
+            borderRadius: '4px',
+            fontSize: '12px'
+          }}>
+            <FileText size={12} />
+          </div>
+        </div>
+
+        {/* Right side - Logout button only */}
+        <button
+          onClick={() => {
+            if (window.confirm('האם אתה בטוח שברצונך להתנתק?')) {
+              localStorage.removeItem('jwtToken');
+              localStorage.removeItem('token');
+              localStorage.removeItem('authToken');
+              localStorage.removeItem('accessToken');
+              window.location.href = '/login';
+            }
+          }}
+          style={{
+            background: 'none',
+            border: '1px solid #4285f4',
+            borderRadius: '8px',
+            padding: '8px 16px',
+            fontSize: '14px',
+            color: '#4285f4',
+            cursor: 'pointer',
+            fontWeight: '500',
+            transition: 'all 0.2s ease'
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.backgroundColor = '#4285f4';
+            e.target.style.color = 'white';
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.backgroundColor = 'transparent';
+            e.target.style.color = '#4285f4';
+          }}
+        >
+          התנתק/י
         </button>
       </div>
 
-      {/* Main Content */}
-      <div style={styles.mainContent}>
+      {/* Main Layout */}
+      <div style={{
+        display: 'flex',
+        minHeight: 'calc(100vh - 60px)',
+        backgroundColor: 'rgba(66, 133, 244, 0.05)' // תכלת שקוף
+      }}>
         {/* Sidebar */}
-        <div style={styles.sidebar}>
-          <div style={{ fontSize: '16px', fontWeight: '600', color: '#374151', marginBottom: '16px' }}>
-            קורות חיים
-          </div>
-          
-          <button 
-            onClick={loadResumes}
-            style={{
-              background: '#f1f5f9',
-              color: '#64748b',
-              border: '1px solid #e2e8f0',
-              borderRadius: '6px',
-              padding: '8px 12px',
-              fontSize: '14px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              width: '100%',
-              marginBottom: '16px',
-            }}
-            disabled={loading}
-          >
-            <RefreshCw size={14} />
-            רענן
-          </button>
+        <div style={{
+          width: '300px',
+          backgroundColor: 'white',
+          borderLeft: '1px solid #e1e5e9',
+          padding: '24px 20px',
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
+          {/* Create new button - הוסר מכאן */}
 
-          <div style={{ fontSize: '12px', color: '#64748b' }}>
+          {/* Navigation */}
+          <div style={{ marginBottom: '32px' }}>
+            <div style={{
+              backgroundColor: '#e8f0fe',
+              color: '#1967d2',
+              padding: '10px 16px',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: '500',
+              marginBottom: '8px',
+              textAlign: 'center'
+            }}>
+              המסמכים שלי
+            </div>
+
+            <div style={{
+              backgroundColor: '#f8f9fa',
+              color: '#5f6368',
+              padding: '10px 16px',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: '400',
+              textAlign: 'center',
+              cursor: 'pointer'
+            }}>
+              מכתבים מקדימים
+            </div>
+          </div>
+
+          {/* Document count */}
+          <div style={{
+            fontSize: '13px',
+            color: '#80868b',
+            textAlign: 'center',
+            marginTop: 'auto'
+          }}>
             {resumes.length} מסמכים
           </div>
         </div>
 
-        {/* Content Area */}
-        <div style={styles.contentArea}>
+        {/* Main Content */}
+        <div style={{
+          flex: 1,
+          padding: '32px',
+          backgroundColor: 'transparent' // שקוף כדי לראות את התכלת
+        }}>
+          {/* Header */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '32px'
+          }}>
+            <h1 style={{
+              fontSize: '32px',
+              fontWeight: '400',
+              color: '#202124',
+              margin: 0
+            }}>
+              המסמכים שלי
+            </h1>
+            
+            {/* Create new button - כאן באזור הראשי */}
+            <button 
+              onClick={createNewResume}
+              style={{
+                backgroundColor: '#4285f4',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '12px 32px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                minWidth: '200px'
+              }}>
+              <Plus size={16} />
+              יצירת קו"ח חדשים
+            </button>
+          </div>
+
+          {/* Documents Grid */}
           {resumes.length === 0 ? (
-            <div style={styles.emptyState}>
-              <div style={{ fontSize: '48px', marginBottom: '16px', color: '#cbd5e1' }}>📄</div>
-              <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '400px',
+              color: '#80868b',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '64px', marginBottom: '24px', opacity: 0.3 }}>📄</div>
+              <h3 style={{ fontSize: '20px', fontWeight: '400', marginBottom: '8px', color: '#5f6368' }}>
                 אין עדיין קורות חיים
               </h3>
-              <p style={{ fontSize: '14px', marginBottom: '16px' }}>
+              <p style={{ fontSize: '16px', marginBottom: '24px', color: '#80868b' }}>
                 צור את קורות החיים הראשונים שלך!
               </p>
-              <button onClick={createNewResume} style={styles.createButton}>
+              <button 
+                onClick={createNewResume}
+                style={{
+                  background: '#4285f4',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '12px 24px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
                 <Plus size={16} />
                 צור עכשיו
               </button>
             </div>
           ) : (
-            <div style={styles.grid}>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+              gap: '32px',
+              maxWidth: '1200px'
+            }}>
               {resumes.map((resume) => {
                 const imageUrl = getImageUrl(resume);
                 
                 return (
                   <div 
-                    key={resume.id} 
-                    style={styles.card}
-                    onMouseEnter={(e) => Object.assign(e.currentTarget.style, styles.cardHover)}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
-                      e.currentTarget.style.borderColor = '#e2e8f0';
+                    key={resume.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '16px',
+                      position: 'relative'
                     }}
+                    onMouseEnter={() => setHoveredCard(resume.id)}
+                    onMouseLeave={() => setHoveredCard(null)}
                   >
-                    {/* Image */}
-                    <div style={styles.imageContainer}>
+                    {/* Document Preview - תמונה אמיתית מ-AWS */}
+                    <div style={{
+                      position: 'relative',
+                      cursor: 'pointer'
+                    }}>
                       {imageUrl ? (
-                        <>
+                        <div style={{
+                          width: '200px',
+                          height: '280px',
+                          position: 'relative',
+                          borderRadius: '8px',
+                          overflow: 'hidden',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                          border: '1px solid #e0e0e0'
+                        }}>
                           <img 
                             src={imageUrl}
                             alt={resume.fileName || 'קורות חיים'}
-                            style={styles.image}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                              objectPosition: 'top center',
+                              display: 'block'
+                            }}
                             onError={(e) => {
                               e.target.style.display = 'none';
                               const placeholder = e.target.parentNode.querySelector('.placeholder');
@@ -626,25 +610,203 @@ const ResumeGallery = ({ onEditResume }) => {
                           />
                           <div 
                             className="placeholder"
-                            style={{...styles.placeholderImage, position: 'absolute', display: 'none'}}
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              display: 'none',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              backgroundColor: '#f0f0f0',
+                              fontSize: '32px',
+                              color: '#999'
+                            }}
                           >
                             📄
                           </div>
-                        </>
+                        </div>
                       ) : (
-                        <div style={styles.placeholderImage}>📄</div>
+                        <div style={{
+                          width: '200px',
+                          height: '280px',
+                          backgroundColor: 'white',
+                          border: '1px solid #e0e0e0',
+                          borderRadius: '8px',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                          position: 'relative',
+                          overflow: 'hidden'
+                        }}>
+                          {/* Header כחול */}
+                          <div style={{
+                            backgroundColor: '#1e3a8a',
+                            height: '60px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                            fontSize: '14px',
+                            fontWeight: '600'
+                          }}>
+                            {resume.fileName}
+                          </div>
+                          
+                          {/* תוכן המסמך */}
+                          <div style={{
+                            padding: '16px',
+                            height: 'calc(100% - 60px)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '8px'
+                          }}>
+                            {/* שורות טקסט מדומות */}
+                            {[...Array(12)].map((_, i) => (
+                              <div key={i} style={{
+                                height: '4px',
+                                backgroundColor: i % 4 === 0 ? '#3b82f6' : '#e5e7eb',
+                                borderRadius: '2px',
+                                width: i % 3 === 0 ? '100%' : `${70 + (i * 5) % 30}%`
+                              }} />
+                            ))}
+                          </div>
+                        </div>
                       )}
                     </div>
 
-                    {/* Content */}
-                    <div style={styles.cardContent}>
-                      <h3 style={styles.fileName}>
+                    {/* Action buttons - בצד שמאל של המסמך */}
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                      marginTop: '20px',
+                      opacity: 1, // תמיד נראה
+                      transition: 'opacity 0.2s ease'
+                    }}>
+                      {/* Edit */}
+                      <button
+                        onClick={(e) => editResume(resume.id, e)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '8px 12px',
+                          border: 'none',
+                          backgroundColor: 'transparent',
+                          color: '#202124',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          minWidth: '80px'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.target.style.backgroundColor = 'rgba(0,0,0,0.05)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.backgroundColor = 'transparent';
+                        }}
+                        title="עריכה"
+                      >
+                        <Edit size={16} style={{ color: '#4285f4' }} />
+                        עריכה
+                      </button>
+
+                      {/* Delete */}
+                      <button
+                        onClick={(e) => deleteResume(resume.id, resume.fileName, e)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '8px 12px',
+                          border: 'none',
+                          backgroundColor: 'transparent',
+                          color: '#202124',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          minWidth: '80px'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!e.target.disabled) {
+                            e.target.style.backgroundColor = 'rgba(0,0,0,0.05)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!e.target.disabled) {
+                            e.target.style.backgroundColor = 'transparent';
+                          }
+                        }}
+                        title="מחיקה"
+                        disabled={deleteLoading === resume.id}
+                      >
+                        {deleteLoading === resume.id ? (
+                          <Loader size={16} style={{ animation: 'spin 1s linear infinite', color: '#4285f4' }} />
+                        ) : (
+                          <Trash2 size={16} style={{ color: '#4285f4' }} />
+                        )}
+                        מחיקה
+                      </button>
+
+                      {/* כפתור מכתב מקדים */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          setCoverLetterModal(resume);
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '8px 12px',
+                          border: 'none',
+                          backgroundColor: 'transparent',
+                          color: '#202124',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          minWidth: '80px'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.target.style.backgroundColor = 'rgba(0,0,0,0.05)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.backgroundColor = 'transparent';
+                        }}
+                        title="יצירת מכתב מקדים"
+                      >
+                        <Sparkles size={16} style={{ color: '#4285f4' }} />
+                        מכתב מקדים
+                      </button>
+                    </div>
+
+                    {/* Document info - מתחת למסמך */}
+                    <div style={{
+                      position: 'absolute',
+                      bottom: '-40px',
+                      right: '0',
+                      left: '0',
+                      textAlign: 'center'
+                    }}>
+                      <h3 style={{
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        color: '#202124',
+                        margin: '0 0 4px 0'
+                      }}>
                         {resume.fileName || `מסמך #${resume.id}`}
                       </h3>
                       
                       {resume.createdAt && (
-                        <div style={styles.dateInfo}>
-                          עודכן אחרון: {new Date(resume.createdAt).toLocaleDateString('he-IL', {
+                        <div style={{
+                          fontSize: '12px',
+                          color: '#80868b'
+                        }}>
+                          עדכון אחרון: {new Date(resume.createdAt).toLocaleDateString('he-IL', {
                             day: '2-digit',
                             month: '2-digit',
                             year: 'numeric',
@@ -653,55 +815,6 @@ const ResumeGallery = ({ onEditResume }) => {
                           })}
                         </div>
                       )}
-
-                      {/* Action Buttons */}
-                      <div style={styles.actionsContainer}>
-                        {/* First Row - Edit & Delete */}
-                        <div style={styles.actionRow}>
-                          <button
-                            onClick={(e) => editResume(resume.id, e)}
-                            style={{...styles.actionButton, ...styles.editButton}}
-                            title="עריכה"
-                          >
-                            <Edit size={12} />
-                            ערוך
-                          </button>
-                          
-                          <button
-                            onClick={(e) => deleteResume(resume.id, resume.fileName, e)}
-                            style={{...styles.actionButton, ...styles.deleteButton}}
-                            disabled={deleteLoading === resume.id}
-                            title="מחיקה"
-                          >
-                            {deleteLoading === resume.id ? (
-                              <Loader size={12} className="animate-spin" />
-                            ) : (
-                              <Trash2 size={12} />
-                            )}
-                            מחק
-                          </button>
-                        </div>
-
-                        {/* Second Row - Generate Cover Letter */}
-                        <button
-                          onClick={() => setCoverLetterModal(resume)}
-                          style={{...styles.actionButton, ...styles.coverLetterButton}}
-                          disabled={coverLetterLoading === resume.id}
-                          title="יצירת מכתב מקדים"
-                        >
-                          {coverLetterLoading === resume.id ? (
-                            <>
-                              <Loader size={12} className="animate-spin" />
-                              יוצר מכתב...
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles size={12} />
-                              צור מכתב מקדים
-                            </>
-                          )}
-                        </button>
-                      </div>
                     </div>
                   </div>
                 );
@@ -713,41 +826,102 @@ const ResumeGallery = ({ onEditResume }) => {
 
       {/* Cover Letter Modal */}
       {coverLetterModal && (
-        <div style={styles.modalOverlay} onClick={() => setCoverLetterModal(null)}>
-          <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <div style={styles.modalTitle}>
-              <Sparkles size={20} />
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }} onClick={() => setCoverLetterModal(null)}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            padding: '24px',
+            width: '90%',
+            maxWidth: '500px',
+            maxHeight: '80vh',
+            overflow: 'auto',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
+          }} onClick={(e) => e.stopPropagation()}>
+            <div style={{
+              fontSize: '18px',
+              fontWeight: '600',
+              color: '#202124',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <Sparkles size={20} style={{ color: '#34a853' }} />
               יצירת מכתב מקדים עבור "{coverLetterModal.fileName}"
             </div>
             
             <div style={{ marginBottom: '12px' }}>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#5f6368',
+                marginBottom: '6px'
+              }}>
                 תיאור המשרה או החברה:
               </label>
               <textarea
                 value={jobDescription}
                 onChange={(e) => setJobDescription(e.target.value)}
                 placeholder="הדבק כאן את תיאור המשרה, או כתב פרטים על החברה והתפקיד שאליו אתה מגיש מועמדות..."
-                style={styles.textarea}
-                onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-                onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
+                style={{
+                  width: '100%',
+                  minHeight: '120px',
+                  padding: '12px',
+                  border: '1px solid #dadce0',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontFamily: 'inherit',
+                  resize: 'vertical',
+                  outline: 'none',
+                  transition: 'border-color 0.2s ease',
+                  boxSizing: 'border-box'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#4285f4'}
+                onBlur={(e) => e.target.style.borderColor = '#dadce0'}
               />
             </div>
 
-            <div style={styles.modalButtons}>
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              marginTop: '16px'
+            }}>
               <button
                 onClick={() => generateCoverLetter(coverLetterModal.id, coverLetterModal.fileName)}
                 disabled={!jobDescription.trim() || coverLetterLoading === coverLetterModal.id}
                 style={{
-                  ...styles.modalButton,
-                  ...styles.generateButton,
-                  opacity: !jobDescription.trim() ? 0.5 : 1,
-                  cursor: !jobDescription.trim() ? 'not-allowed' : 'pointer'
+                  flex: 1,
+                  padding: '10px 16px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  transition: 'all 0.2s ease',
+                  backgroundColor: '#34a853',
+                  color: 'white',
+                  opacity: !jobDescription.trim() ? 0.5 : 1
                 }}
               >
                 {coverLetterLoading === coverLetterModal.id ? (
                   <>
-                    <Loader size={16} className="animate-spin" />
+                    <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} />
                     יוצר מכתב...
                   </>
                 ) : (
@@ -763,19 +937,44 @@ const ResumeGallery = ({ onEditResume }) => {
                   setCoverLetterModal(null);
                   setJobDescription('');
                 }}
-                style={{...styles.modalButton, ...styles.cancelButton}}
+                style={{
+                  flex: 1,
+                  padding: '10px 16px',
+                  borderRadius: '8px',
+                  border: '1px solid #dadce0',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  backgroundColor: '#f8f9fa',
+                  color: '#5f6368'
+                }}
                 disabled={coverLetterLoading === coverLetterModal.id}
               >
                 ביטול
               </button>
             </div>
 
-            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '12px', textAlign: 'center' }}>
+            <div style={{
+              fontSize: '12px',
+              color: '#80868b',
+              marginTop: '12px',
+              textAlign: 'center'
+            }}>
               💡 ככל שתיאור המשרה יהיה מפורט יותר, המכתב יהיה מותאם יותר
             </div>
           </div>
         </div>
       )}
+
+      {/* CSS for animations */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `
+      }} />
     </div>
   );
 };

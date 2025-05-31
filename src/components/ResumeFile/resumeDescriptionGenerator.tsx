@@ -43,7 +43,15 @@ const professionDescriptions = {
   ]
 };
 
-const ResumeDescriptionGenerator = ({ onSummaryChange, initialSummary = '' }) => {
+const ResumeDescriptionGenerator = ({ 
+  onSummaryChange, 
+  initialSummary = '', 
+  autoSave = true, 
+  blockAutoSave = false, 
+  manualSaveOnly = false 
+}) => {
+  console.log('🏃‍♂️ ResumeDescriptionGenerator התחיל עם initialSummary:', initialSummary);
+  
   const [summary, setSummary] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showSuggestionsBox, setShowSuggestionsBox] = useState(false);
@@ -58,12 +66,21 @@ const ResumeDescriptionGenerator = ({ onSummaryChange, initialSummary = '' }) =>
   // 🔧 פתרון הלולאה האינסופית
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const initialDataLoaded = useRef(false);
+  const onSummaryChangeRef = useRef(onSummaryChange);
 
-  // useEffect לטעינה ראשונית - רק פעם אחת
+  // עדכון ה-ref כאשר הפונקציה משתנה
   useEffect(() => {
+    onSummaryChangeRef.current = onSummaryChange;
+  }, [onSummaryChange]);
+
+  // 🔥 טעינת נתונים קיימים - רק פעם אחת!
+  useEffect(() => {
+    console.log('🔄 ResumeDescriptionGenerator useEffect רץ עם initialSummary:', initialSummary);
+    
     if (!initialDataLoaded.current) {
       // טוען נתונים ראשוניים אם יש
       if (initialSummary) {
+        console.log('✅ מעדכן תקציר עם נתונים ראשוניים:', initialSummary);
         setSummary(initialSummary);
       }
       
@@ -74,16 +91,17 @@ const ResumeDescriptionGenerator = ({ onSummaryChange, initialSummary = '' }) =>
 
   // useEffect לשליחת נתונים לparent - רק אחרי הטעינה הראשונית
   useEffect(() => {
-    if (!isInitialLoad && onSummaryChange) {
-      onSummaryChange(summary);
+    // 🚨 רק אחרי שהטעינה הראשונית הסתיימה ורק אם לא חסום
+    if (!isInitialLoad && onSummaryChangeRef.current && !blockAutoSave && autoSave && !manualSaveOnly) {
+      console.log('📤 שולח תקציר לparent:', summary);
+      onSummaryChangeRef.current(summary);
     }
-  }, [summary, isInitialLoad, onSummaryChange]);
+  }, [summary, isInitialLoad, blockAutoSave, autoSave, manualSaveOnly]);
 
   const handleChange = (e) => {
     const newSummary = e.target.value;
+    console.log('📝 תקציר השתנה ל:', newSummary);
     setSummary(newSummary);
-    // הסרתי את הקריאה הישירה ל-onSummaryChange מכאן
-    // עכשיו זה יקרה דרך useEffect
   };
 
   const handleSearchChange = (e) => {
@@ -132,7 +150,6 @@ const ResumeDescriptionGenerator = ({ onSummaryChange, initialSummary = '' }) =>
                        text;
     
     setSummary(newSummary);
-    // הסרתי את הקריאה הישירה ל-onSummaryChange מכאן גם
   };
 
   // פונקציות לכפתורי עיצוב טקסט
@@ -149,6 +166,33 @@ const ResumeDescriptionGenerator = ({ onSummaryChange, initialSummary = '' }) =>
       ...prev,
       align: alignment
     }));
+  };
+
+  // פונקציה להחלת עיצוב בטקסט
+  const applyFormatting = (text) => {
+    let formattedText = text;
+    
+    if (textFormat.bold) {
+      formattedText = `<strong>${formattedText}</strong>`;
+    }
+    
+    if (textFormat.italic) {
+      formattedText = `<em>${formattedText}</em>`;
+    }
+    
+    if (textFormat.underline) {
+      formattedText = `<u>${formattedText}</u>`;
+    }
+    
+    return formattedText;
+  };
+
+  // פונקציה לטיפול ב-Enter ושבירת שורות
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      // אל תמנע את ברירת המחדל - תן לו לעבוד כרגיל
+      // זה יגרום לירידת שורה
+    }
   };
 
   return (
@@ -272,7 +316,8 @@ const ResumeDescriptionGenerator = ({ onSummaryChange, initialSummary = '' }) =>
                   border: 'none', 
                   cursor: 'pointer', 
                   padding: '0 4px',
-                  color: textFormat.bold ? '#2196f3' : '#666'
+                  color: textFormat.bold ? '#2196f3' : '#666',
+                  outline: 'none'
                 }}
               >
                 <svg viewBox="0 0 24 24" style={{ width: '18px', height: '18px', fill: 'currentColor' }}>
@@ -286,7 +331,8 @@ const ResumeDescriptionGenerator = ({ onSummaryChange, initialSummary = '' }) =>
                   border: 'none', 
                   cursor: 'pointer', 
                   padding: '0 4px',
-                  color: textFormat.italic ? '#2196f3' : '#666'
+                  color: textFormat.italic ? '#2196f3' : '#666',
+                  outline: 'none'
                 }}
               >
                 <svg viewBox="0 0 24 24" style={{ width: '18px', height: '18px', fill: 'currentColor' }}>
@@ -300,7 +346,8 @@ const ResumeDescriptionGenerator = ({ onSummaryChange, initialSummary = '' }) =>
                   border: 'none', 
                   cursor: 'pointer', 
                   padding: '0 4px',
-                  color: textFormat.underline ? '#2196f3' : '#666'
+                  color: textFormat.underline ? '#2196f3' : '#666',
+                  outline: 'none'
                 }}
               >
                 <svg viewBox="0 0 24 24" style={{ width: '18px', height: '18px', fill: 'currentColor' }}>
@@ -314,7 +361,8 @@ const ResumeDescriptionGenerator = ({ onSummaryChange, initialSummary = '' }) =>
                   border: 'none', 
                   cursor: 'pointer', 
                   padding: '0 4px',
-                  color: textFormat.align === 'right' ? '#2196f3' : '#666'
+                  color: textFormat.align === 'right' ? '#2196f3' : '#666',
+                  outline: 'none'
                 }}
               >
                 <svg viewBox="0 0 24 24" style={{ width: '18px', height: '18px', fill: 'currentColor' }}>
@@ -328,11 +376,27 @@ const ResumeDescriptionGenerator = ({ onSummaryChange, initialSummary = '' }) =>
                   border: 'none', 
                   cursor: 'pointer', 
                   padding: '0 4px',
-                  color: textFormat.align === 'center' ? '#2196f3' : '#666'
+                  color: textFormat.align === 'center' ? '#2196f3' : '#666',
+                  outline: 'none'
                 }}
               >
                 <svg viewBox="0 0 24 24" style={{ width: '18px', height: '18px', fill: 'currentColor' }}>
                   <path d="M7 15v2h10v-2H7zm-4 6h18v-2H3v2zm0-8h18v-2H3v2zm4-6v2h10V7H7zM3 3v2h18V3H3z" />
+                </svg>
+              </button>
+              <button 
+                onClick={() => setAlignment('justify')}
+                style={{ 
+                  background: 'none', 
+                  border: 'none', 
+                  cursor: 'pointer', 
+                  padding: '0 4px',
+                  color: textFormat.align === 'justify' ? '#2196f3' : '#666',
+                  outline: 'none'
+                }}
+              >
+                <svg viewBox="0 0 24 24" style={{ width: '18px', height: '18px', fill: 'currentColor' }}>
+                  <path d="M3 21h18v-2H3v2zm0-4h18v-2H3v2zm0-4h18v-2H3v2zm0-4h18V7H3v2zm0-6v2h18V3H3z" />
                 </svg>
               </button>
             </div>
@@ -374,7 +438,8 @@ const ResumeDescriptionGenerator = ({ onSummaryChange, initialSummary = '' }) =>
                       border: 'none',
                       cursor: 'pointer',
                       padding: 0,
-                      display: 'flex'
+                      display: 'flex',
+                      outline: 'none'
                     }}
                   >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="#666">
@@ -457,7 +522,8 @@ const ResumeDescriptionGenerator = ({ onSummaryChange, initialSummary = '' }) =>
                                 justifyContent: 'center',
                                 cursor: 'pointer',
                                 flexShrink: 0,
-                                marginLeft: '12px'
+                                marginLeft: '12px',
+                                outline: 'none'
                               }}
                             >
                               <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
@@ -488,121 +554,47 @@ const ResumeDescriptionGenerator = ({ onSummaryChange, initialSummary = '' }) =>
                   </div>
                 ) : (
                   <div>
-                    <div style={{ 
-                      padding: '16px',
-                      borderBottom: '1px solid #e0e0e0',
-                      textAlign: 'right',
-                      direction: 'rtl'
-                    }}>
-                      <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#000000' }}>מורה</div>
-                      <div style={{ 
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
+                    {Object.entries(professionDescriptions).slice(0, 3).map(([profession, descriptions]) => (
+                      <div key={profession} style={{ 
+                        padding: '16px',
+                        borderBottom: '1px solid #e0e0e0',
+                        textAlign: 'right',
+                        direction: 'rtl'
                       }}>
-                        <button
-                          onClick={() => handleDescriptionClick(professionDescriptions['מורה'][0])}
-                          style={{
-                            backgroundColor: '#4285f4',
-                            color: 'white',
-                            border: 'none',
-                            width: '32px',
-                            height: '32px',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            flexShrink: 0,
-                            marginLeft: '12px'
-                          }}
-                        >
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
-                          </svg>
-                        </button>
-                        <p style={{ margin: 0, fontSize: '14px', flex: 1, textAlign: 'right', color: '#000000' }}>
-                          {professionDescriptions['מורה'][0]}
-                        </p>
+                        <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#000000' }}>{profession}</div>
+                        <div style={{ 
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}>
+                          <button
+                            onClick={() => handleDescriptionClick(descriptions[0])}
+                            style={{
+                              backgroundColor: '#4285f4',
+                              color: 'white',
+                              border: 'none',
+                              width: '32px',
+                              height: '32px',
+                              borderRadius: '50%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              flexShrink: 0,
+                              marginLeft: '12px',
+                              outline: 'none'
+                            }}
+                          >
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                              <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+                            </svg>
+                          </button>
+                          <p style={{ margin: 0, fontSize: '14px', flex: 1, textAlign: 'right', color: '#000000' }}>
+                            {descriptions[0]}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                    
-                    <div style={{ 
-                      padding: '16px',
-                      borderBottom: '1px solid #f0f0f0',
-                      textAlign: 'right',
-                      direction: 'rtl'
-                    }}>
-                      <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#000000' }}>מכירות</div>
-                      <div style={{ 
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                      }}>
-                        <button
-                          onClick={() => handleDescriptionClick(professionDescriptions['מכירות'][0])}
-                          style={{
-                            backgroundColor: '#4285f4',
-                            color: 'white',
-                            border: 'none',
-                            width: '32px',
-                            height: '32px',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            flexShrink: 0,
-                            marginLeft: '12px'
-                          }}
-                        >
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
-                          </svg>
-                        </button>
-                        <p style={{ margin: 0, fontSize: '14px', flex: 1, textAlign: 'right', color: '#000000' }}>
-                          {professionDescriptions['מכירות'][0]}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div style={{ 
-                      padding: '16px',
-                      textAlign: 'right',
-                      direction: 'rtl'
-                    }}>
-                      <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#000000' }}>מתכנת</div>
-                      <div style={{ 
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                      }}>
-                        <button
-                          onClick={() => handleDescriptionClick(professionDescriptions['מתכנת'][0])}
-                          style={{
-                            backgroundColor: '#4285f4',
-                            color: 'white',
-                            border: 'none',
-                            width: '32px',
-                            height: '32px',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            flexShrink: 0,
-                            marginLeft: '12px'
-                          }}
-                        >
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
-                          </svg>
-                        </button>
-                        <p style={{ margin: 0, fontSize: '14px', flex: 1, textAlign: 'right', color: '#000000' }}>
-                          {professionDescriptions['מתכנת'][0]}
-                        </p>
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -612,6 +604,7 @@ const ResumeDescriptionGenerator = ({ onSummaryChange, initialSummary = '' }) =>
           <textarea
             value={summary}
             onChange={handleChange}
+            onKeyDown={handleKeyDown}
             placeholder="לדוגמה: מהנדס מנוסה בעל +10 שנות ניסיון, מחפש משרה מלאה ומאתגרת..."
             style={{
               width: '100%',
@@ -628,7 +621,9 @@ const ResumeDescriptionGenerator = ({ onSummaryChange, initialSummary = '' }) =>
               textAlign: textFormat.align,
               fontWeight: textFormat.bold ? 'bold' : 'normal',
               fontStyle: textFormat.italic ? 'italic' : 'normal',
-              textDecoration: textFormat.underline ? 'underline' : 'none'
+              textDecoration: textFormat.underline ? 'underline' : 'none',
+              whiteSpace: 'pre-wrap', // משמר שבירות שורות ורווחים
+              lineHeight: '1.5' // שיפור קריאות
             }}
           />
         </div>
@@ -636,5 +631,4 @@ const ResumeDescriptionGenerator = ({ onSummaryChange, initialSummary = '' }) =>
     </div>
   );
 };
-
-export default ResumeDescriptionGenerator;
+export default ResumeDescriptionGenerator

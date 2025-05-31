@@ -16,13 +16,13 @@ const TemplateList: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [currentStartIndex, setCurrentStartIndex] = useState(0);
   const navigate = useNavigate();
-
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
   const templatesPerPage = 4;
 
   useEffect(() => {
     const fetchTemplates = async () => {
       try {
-        const response = await axios.get("http://localhost:5227/api/Template");
+        const response = await axios.get(`${API_BASE_URL}/api/Template `);
         const data = Array.isArray(response.data) ? response.data : response.data?.$values;
         if (Array.isArray(data)) {
           setTemplates(data);

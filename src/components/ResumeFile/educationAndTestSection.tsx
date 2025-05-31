@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Typography,
   TextField,
@@ -148,11 +148,22 @@ const yearOptions = Array.from({ length: 50 }, (_, i) => String(currentYear - i)
 export default function EducationAndTestSection({
   onEducationUpdate,
   onTestUpdate,
-
+  initialEducation = [],
+  initialTests = [],
+  autoSave = true,
+  blockAutoSave = false,
+  manualSaveOnly = false
 }: {
   onEducationUpdate?: (educationList: EducationData[]) => void;
   onTestUpdate?: (testList: TestData[]) => void;
+  initialEducation?: EducationData[];
+  initialTests?: TestData[];
+  autoSave?: boolean;
+  blockAutoSave?: boolean;
+  manualSaveOnly?: boolean;
 }) {
+  console.log('🏃‍♂️ EducationAndTestSection התחיל עם:', { initialEducation, initialTests });
+
   const [educationData, setEducationData] = useState<EducationData>(initialEducationData);
   const [testData, setTestData] = useState<TestData>(initialTestData);
   
@@ -170,6 +181,53 @@ export default function EducationAndTestSection({
   
   const [helpAnchorEl, setHelpAnchorEl] = useState<null | HTMLElement>(null);
 
+  // 🔧 טעינת נתונים קיימים
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const initialDataLoaded = useRef(false);
+  const onEducationUpdateRef = useRef(onEducationUpdate);
+  const onTestUpdateRef = useRef(onTestUpdate);
+
+  // עדכון ה-refs כאשר הפונקציות משתנות
+  useEffect(() => {
+    onEducationUpdateRef.current = onEducationUpdate;
+    onTestUpdateRef.current = onTestUpdate;
+  }, [onEducationUpdate, onTestUpdate]);
+
+  // 🔥 טעינת נתונים ראשוניים - רק פעם אחת!
+  useEffect(() => {
+    console.log('🔄 EducationAndTestSection useEffect רץ עם:', { initialEducation, initialTests });
+    
+    if (!initialDataLoaded.current) {
+      if (initialEducation && initialEducation.length > 0) {
+        console.log('✅ מעדכן רשימת השכלה עם נתונים ראשוניים:', initialEducation);
+        setEducationList(initialEducation);
+      }
+      
+      if (initialTests && initialTests.length > 0) {
+        console.log('✅ מעדכן רשימת מבחנים עם נתונים ראשוניים:', initialTests);
+        setTestList(initialTests);
+      }
+      
+      initialDataLoaded.current = true;
+      setIsInitialLoad(false);
+    }
+  }, [initialEducation, initialTests]);
+
+  // useEffect לשליחת נתונים לparent - רק אחרי הטעינה הראשונית
+  useEffect(() => {
+    if (!isInitialLoad && onEducationUpdateRef.current && !blockAutoSave && autoSave && !manualSaveOnly) {
+      console.log('📤 שולח רשימת השכלה לparent:', educationList);
+      onEducationUpdateRef.current(educationList);
+    }
+  }, [educationList, isInitialLoad, blockAutoSave, autoSave, manualSaveOnly]);
+
+  useEffect(() => {
+    if (!isInitialLoad && onTestUpdateRef.current && !blockAutoSave && autoSave && !manualSaveOnly) {
+      console.log('📤 שולח רשימת מבחנים לparent:', testList);
+      onTestUpdateRef.current(testList);
+    }
+  }, [testList, isInitialLoad, blockAutoSave, autoSave, manualSaveOnly]);
+
   const handleHelpClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     setHelpAnchorEl(event.currentTarget);
   };
@@ -179,10 +237,12 @@ export default function EducationAndTestSection({
   };
 
   const handleEducationChange = (field: keyof EducationData, value: any) => {
+    console.log(`📝 השכלה - שדה ${field} השתנה ל:`, value);
     setEducationData({ ...educationData, [field]: value });
   };
 
   const handleTestChange = (field: keyof TestData, value: any) => {
+    console.log(`📝 מבחן - שדה ${field} השתנה ל:`, value);
     setTestData({ ...testData, [field]: value });
   };
   
@@ -195,81 +255,69 @@ export default function EducationAndTestSection({
   };
 
   const handleAddEducation = () => {
+    let updatedEducationList;
+    
     if (editingEduIndex >= 0) {
       // Update existing education
-      const updatedEducationList = [...educationList];
+      updatedEducationList = [...educationList];
       updatedEducationList[editingEduIndex] = educationData;
-      setEducationList(updatedEducationList);
       setEditingEduIndex(-1);
-      
-      if (onEducationUpdate) {
-        onEducationUpdate(updatedEducationList);
-      }
+      console.log('📚 עדכן השכלה:', educationData);
     } else {
       // Add new education
-      const updatedList = [...educationList, educationData];
-      setEducationList(updatedList);
-      
-      if (onEducationUpdate) {
-        onEducationUpdate(updatedList);
-      }
+      updatedEducationList = [...educationList, educationData];
+      console.log('📚 הוסף השכלה:', educationData);
     }
     
+    setEducationList(updatedEducationList);
     setEducationData(initialEducationData);
     setShowEducationForm(false);
   };
 
   const handleAddTest = () => {
+    let updatedTestList;
+    
     if (editingTestIndex >= 0) {
       // Update existing test
-      const updatedTestList = [...testList];
+      updatedTestList = [...testList];
       updatedTestList[editingTestIndex] = testData;
-      setTestList(updatedTestList);
       setEditingTestIndex(-1);
-      
-      if (onTestUpdate) {
-        onTestUpdate(updatedTestList);
-      }
+      console.log('📊 עדכן מבחן:', testData);
     } else {
       // Add new test
-      const updatedList = [...testList, testData];
-      setTestList(updatedList);
-      
-      if (onTestUpdate) {
-        onTestUpdate(updatedList);
-      }
+      updatedTestList = [...testList, testData];
+      console.log('📊 הוסף מבחן:', testData);
     }
     
+    setTestList(updatedTestList);
     setTestData(initialTestData);
     setShowTestForm(false);
   };
 
   const handleDeleteEducation = (index: number) => {
     const updatedList = educationList.filter((_, i) => i !== index);
+    console.log('🗑️ מחק השכלה:', index);
     setEducationList(updatedList);
-    
-    if (onEducationUpdate) {
-      onEducationUpdate(updatedList);
-    }
   };
 
   const handleDeleteTest = (index: number) => {
     const updatedList = testList.filter((_, i) => i !== index);
+    console.log('🗑️ מחק מבחן:', index);
     setTestList(updatedList);
-    
-    if (onTestUpdate) {
-      onTestUpdate(updatedList);
-    }
   };
   
   const handleEditEducation = (index: number) => {
-    setEducationData(educationList[index]);
+    const eduToEdit = educationList[index];
+    console.log('✏️ ערוך השכלה:', eduToEdit);
+    setEducationData(eduToEdit);
     setEditingEduIndex(index);
     setShowEducationForm(true);
   };
   
   const handleEditTest = (index: number) => {
-    setTestData(testList[index]);
+    const testToEdit = testList[index];
+    console.log('✏️ ערוך מבחן:', testToEdit);
+    setTestData(testToEdit);
     setEditingTestIndex(index);
     setShowTestForm(true);
   };
@@ -290,32 +338,75 @@ export default function EducationAndTestSection({
     <ThemeProvider theme={theme}>
       <Box dir="rtl" sx={{ fontFamily: "'Assistant', 'Roboto', 'Helvetica', 'Arial', sans-serif" }}>
         {/* השכלה */}
-        <Card elevation={0} sx={{ maxWidth: 800, mx: "auto", mt: 3, border: "1px solid rgba(0, 0, 0, 0.05)" }}>
-          <CardHeader
-            title={
-              <Box display="flex" alignItems="center">
-                <span style={{ fontSize: '14px', color: '#333', fontWeight: 'bold' }}>השכלה</span>
-                <IconButton size="small" aria-label="help" onClick={handleHelpClick}>
-                  <HelpIcon fontSize="small" />
-                </IconButton>
-              </Box>
-            }
-            action={
-              <Box display="flex" alignItems="center">
-                <Tooltip title={helpText.main}>
-                  <span></span>
-                </Tooltip>
-              </Box>
-            }
-            sx={{ 
-              borderBottom: "1px solid rgba(0, 0, 0, 0.05)",
-              py: 1.5,
-              backgroundColor: '#f9f9f9',
-            }}
-          />
+        <div style={{ 
+          padding: '0', 
+          maxWidth: '1000px', 
+          margin: '16px auto',
+          background: '#ffffff',
+          fontFamily: 'Arial, sans-serif',
+          position: 'relative',
+          borderRadius: '8px',
+          overflow: 'hidden',
+          border: '1px solid #d0d0d0',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
+        }}>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            borderBottom: '1px solid #d0d0d0',
+            padding: '12px 16px',
+            backgroundColor: '#ffffff'
+          }}>
+            <div></div>
+            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>השכלה</h2>
+            <div 
+              title={helpText.main}
+              style={{ 
+                cursor: 'help',
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center'
+              }}
+              onMouseOver={() => {
+                const tooltip = document.getElementById('education-tooltip');
+                if (tooltip) tooltip.style.display = 'block';
+              }}
+              onMouseOut={() => {
+                const tooltip = document.getElementById('education-tooltip');
+                if (tooltip) tooltip.style.display = 'none';
+              }}
+            >
+              <svg style={{ width: '18px', height: '18px', fill: '#757575' }} viewBox="0 0 24 24">
+                <path d="M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z" />
+              </svg>
+              <span style={{ fontSize: '14px', color: '#333', fontWeight: 'bold', marginRight: '6px' }}>השכלה</span>
+              <div 
+                id="education-tooltip"
+                style={{
+                  display: 'none',
+                  position: 'absolute',
+                  top: '25px',
+                  right: '-10px',
+                  width: '200px',
+                  backgroundColor: '#626262',
+                  color: '#ffffff',
+                  padding: '8px 12px',
+                  borderRadius: '4px',
+                  fontSize: '13px',
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
+                  zIndex: 1000,
+                  textAlign: 'right',
+                  direction: 'rtl'
+                }}
+              >
+                {helpText.main}
+              </div>
+            </div>
+          </div>
           
           <Collapse in={isEducationExpanded}>
-            <CardContent>
+            <div style={{ padding: '24px' }}>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 3, textAlign: 'right' }}>
                 במידה וקיימת השכלה רלוונטית, ניתן לציין אותה בצירוף השיוך הלימודי
               </Typography>
@@ -356,7 +447,8 @@ export default function EducationAndTestSection({
                           sx={{ 
                             fontSize: '0.875rem',
                             lineHeight: 1.5,
-                            color: '#555'
+                            color: '#555',
+                            whiteSpace: 'pre-wrap'
                           }}
                         />
                       )}
@@ -563,14 +655,21 @@ export default function EducationAndTestSection({
                         '& .MuiInputBase-input': {
                           textAlign: 'right',
                           direction: 'rtl',
+                          whiteSpace: 'pre-wrap'
                         },
                         '& .MuiInputBase-inputMultiline': {
                           textAlign: 'right',
                           direction: 'rtl',
+                          whiteSpace: 'pre-wrap'
                         }
                       }}
                       InputLabelProps={{
                         shrink: true
+                      }}
+                      inputProps={{
+                        style: {
+                          whiteSpace: 'pre-wrap'
+                        }
                       }}
                     />
                   </Box>
@@ -594,37 +693,80 @@ export default function EducationAndTestSection({
                   </Box>
                 </Paper>
               )}
-            </CardContent>
+            </div>
           </Collapse>
-        </Card>
+        </div>
 
         {/* מבחנים */}
-        <Card elevation={0} sx={{ maxWidth: 800, mx: "auto", mt: 3, border: "1px solid rgba(0, 0, 0, 0.05)" }}>
-          <CardHeader
-            title={
-              <Box display="flex" alignItems="center">
-                <span style={{ fontSize: '14px', color: '#333', fontWeight: 'bold' }}>מבחנים</span>
-                <IconButton size="small" aria-label="help" onClick={handleHelpClick}>
-                  <HelpIcon fontSize="small" />
-                </IconButton>
-              </Box>
-            }
-            action={
-              <Box display="flex" alignItems="center">
-                <Tooltip title={helpText.tests}>
-                  <span></span>
-                </Tooltip>
-              </Box>
-            }
-            sx={{ 
-              borderBottom: "1px solid rgba(0, 0, 0, 0.05)",
-              py: 1.5,
-              backgroundColor: '#f9f9f9',
-            }}
-          />
+        <div style={{ 
+          padding: '0', 
+          maxWidth: '1000px', 
+          margin: '16px auto',
+          background: '#ffffff',
+          fontFamily: 'Arial, sans-serif',
+          position: 'relative',
+          borderRadius: '8px',
+          overflow: 'hidden',
+          border: '1px solid #d0d0d0',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
+        }}>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            borderBottom: '1px solid #d0d0d0',
+            padding: '12px 16px',
+            backgroundColor: '#ffffff'
+          }}>
+            <div></div>
+            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>מבחנים</h2>
+            <div 
+              title={helpText.tests}
+              style={{ 
+                cursor: 'help',
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center'
+              }}
+              onMouseOver={() => {
+                const tooltip = document.getElementById('tests-tooltip');
+                if (tooltip) tooltip.style.display = 'block';
+              }}
+              onMouseOut={() => {
+                const tooltip = document.getElementById('tests-tooltip');
+                if (tooltip) tooltip.style.display = 'none';
+              }}
+            >
+              <svg style={{ width: '18px', height: '18px', fill: '#757575' }} viewBox="0 0 24 24">
+                <path d="M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z" />
+              </svg>
+              <span style={{ fontSize: '14px', color: '#333', fontWeight: 'bold', marginRight: '6px' }}>מבחנים</span>
+              <div 
+                id="tests-tooltip"
+                style={{
+                  display: 'none',
+                  position: 'absolute',
+                  top: '25px',
+                  right: '-10px',
+                  width: '200px',
+                  backgroundColor: '#626262',
+                  color: '#ffffff',
+                  padding: '8px 12px',
+                  borderRadius: '4px',
+                  fontSize: '13px',
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
+                  zIndex: 1000,
+                  textAlign: 'right',
+                  direction: 'rtl'
+                }}
+              >
+                {helpText.tests}
+              </div>
+            </div>
+          </div>
           
           <Collapse in={isTestExpanded}>
-            <CardContent>
+            <div style={{ padding: '24px' }}>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 3, textAlign: 'right' }}>
                 הוסף מבחני מיון שביצעת כגון פסיכומטרי, GMAT, TOEFL או בחינות הסמכה מקצועיות
               </Typography>
@@ -740,10 +882,11 @@ export default function EducationAndTestSection({
                   </Box>
                 </Paper>
               )}
-            </CardContent>
+            </div>
           </Collapse>
-        </Card>
+        </div>
       </Box>
     </ThemeProvider>
   );
 }
+

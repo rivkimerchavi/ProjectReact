@@ -4,6 +4,9 @@ import { TextField, Button, Container, Typography, Box } from '@mui/material';
 import { useForm, Controller } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import userStore from '../store/userStore';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+
 
 const Register: React.FC = () => {
   const [registerError, setRegisterError] = useState('');
@@ -16,7 +19,7 @@ const Register: React.FC = () => {
 
     try {
       // שליחת בקשה לשרת בכתובת HTTP5227
-      const response = await axios.post("http://localhost:5227/api/User/register", {
+      const response = await axios.post(`${API_BASE_URL}/api/User/register`, {
    
         name: data.name,
         email: data.email,
