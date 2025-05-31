@@ -1,19 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
-  Box,
   Button,
-  Divider,
   Grid,
   IconButton,
   Paper,
   TextField,
   Typography,
   Collapse,
-  Fade,
-  Grow,
-  Chip,
-  Tooltip,
-  useTheme,
   Checkbox,
   FormControlLabel,
   MenuItem,
@@ -24,11 +17,8 @@ import {
 
 // Icons
 import DeleteIcon from "@mui/icons-material/Delete"
-import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline"
-import CheckCircleIcon from "@mui/icons-material/CheckCircle"
 import {
   Add as AddIcon,
-  Delete as DeleteIcon2,
   FormatAlignLeft as FormatAlignLeftIcon,
   FormatAlignCenter as FormatAlignCenterIcon,
   FormatAlignJustify as FormatAlignJustifyIcon,
@@ -36,8 +26,6 @@ import {
   FormatItalic as FormatItalicIcon,
   FormatUnderlined as FormatUnderlinedIcon,
   Add as PlusIcon,
-  HelpOutline as InfoIcon,
-  Search as SearchIcon
 } from "@mui/icons-material";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 
@@ -246,8 +234,6 @@ const theme = createTheme({
 });
 
 const EmploymentExperience: React.FC<EmploymentExperienceProps> = ({ 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  onFormChange, 
   onExperienceListChange,
   initialExperiences = [],
   autoSave = true,
@@ -258,8 +244,6 @@ const EmploymentExperience: React.FC<EmploymentExperienceProps> = ({
 
   const [experienceData, setExperienceData] = useState<ExperienceData>(initialExperienceData);
   const [showForm, setShowForm] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [isExpanded, setIsExpanded] = useState(true);
   const [experiences, setExperiences] = useState<ExperienceData[]>([]);
   const [editingIndex, setEditingIndex] = useState(-1);
   
@@ -519,7 +503,7 @@ const EmploymentExperience: React.FC<EmploymentExperienceProps> = ({
             </div>
           </div>
           
-          <Collapse in={isExpanded}>
+          <Collapse in={true}>
             <div style={{ padding: '24px' }}>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 3, textAlign: 'right' }}>
                 הוסף/י את הניסיון המקצועי שלך מהשנים האחרונות, כאשר התפקיד האחרון יוצג ראשון
@@ -709,7 +693,6 @@ const EmploymentExperience: React.FC<EmploymentExperienceProps> = ({
                           }}
                         >
                           <MenuItem value="" disabled><em>בחר סוג משרה</em></MenuItem>
-                          <MenuItem value="משרה מלאה">משרה מלאה</MenuItem>
                           <MenuItem value="משרה מלאה">משרה מלאה</MenuItem>
                           <MenuItem value="משרה חלקית">משרה חלקית</MenuItem>
                           <MenuItem value="פרילנס">פרילנס</MenuItem>

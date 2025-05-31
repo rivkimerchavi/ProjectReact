@@ -1,11 +1,11 @@
-import React from 'react';
+
 import { useNavigate } from 'react-router-dom';
 import ResumeGallery from './ResumeGallery';
 
 const ResumeGalleryPage = () => {
   const navigate = useNavigate();
 
-  const handleEditResume = (resumeData) => {
+  const handleEditResume = (resumeData:any) => {
     if (resumeData) {
       // עריכת קורות חיים קיימים - העבר את הנתונים
       console.log('🔄 מעבר לעריכת קורות חיים קיימים:', resumeData);
