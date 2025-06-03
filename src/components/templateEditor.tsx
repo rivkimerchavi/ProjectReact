@@ -295,9 +295,9 @@ const TemplateEditor: React.FC = () => {
     ): Promise<R> => {
       if (url && url.includes('resume-file') && blockAutoSave) {
         console.log('🚫 חסימת שמירה אוטומטית!', url);
-        return Promise.resolve({ data: { blocked: true } } as R);
+        return Promise.resolve({ data: { blocked: true } } as any as R);
       }
-      return originalAxios.call(axios, url, data, config);
+      return originalAxios.call(axios, url, data, config) as Promise<R>;
     };
 
     return () => {
