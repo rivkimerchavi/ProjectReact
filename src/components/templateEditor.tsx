@@ -953,12 +953,16 @@ const TemplateEditor: React.FC = () => {
         }
       }
       
+      // 🎯 לוגיקה נכונה לעדכון VS יצירה - חזרה על הגדרת המשתנים לטיפול בשגיאות
+      const hasValidResumeIdForError = resumeId && !resumeId.toString().startsWith('local_');
+      const isEditingModeForError = isEditingExisting && existingResumeData?.id;
+      
       console.error('📍 פרטי השגיאה:', {
         message: error.message,
         response: error.response?.data,
         status: error.response?.status,
         resumeId: resumeId,
-        wasUpdate: hasValidResumeId || isEditingMode
+        wasUpdate: hasValidResumeIdForError || isEditingModeForError
       });
       
       setBlockAutoSave(true);
