@@ -16,7 +16,7 @@ export const  myRouter= createBrowserRouter([
         element: <AppLayout />,
         errorElement: <>main error</>,
         children:
-         [ 
+         [ { index: true, element:<Auth/>}, 
             {path:'login',element:<Login/>},
             {path:'register',element:<Register/>},
             {path:"auth" ,element:<Auth/>},

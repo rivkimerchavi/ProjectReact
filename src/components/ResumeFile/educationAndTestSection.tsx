@@ -1,32 +1,24 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Typography,
   TextField,
   Button,
   Grid,
   Box,
-  Card,
-  CardHeader,
-  CardContent,
   Collapse,
   IconButton,
-  Divider,
   Paper,
   FormControlLabel,
   Checkbox,
   MenuItem,
   Select,
   FormControl,
-  InputLabel,
-  Tooltip
+  InputLabel
 } from "@mui/material";
 import {
-  ExpandLess as ExpandLessIcon,
-  ExpandMore as ExpandMoreIcon,
   Delete as DeleteIcon,
   Add as AddIcon,
-  Edit as EditIcon,
-  HelpOutline as HelpIcon
+  Edit as EditIcon
 } from "@mui/icons-material";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 
@@ -170,16 +162,14 @@ export default function EducationAndTestSection({
   const [educationList, setEducationList] = useState<EducationData[]>([]);
   const [testList, setTestList] = useState<TestData[]>([]);
   
-  const [isEducationExpanded, setIsEducationExpanded] = useState(true);
-  const [isTestExpanded, setIsTestExpanded] = useState(true);
+  const [isEducationExpanded] = useState(true);
+  const [isTestExpanded] = useState(true);
   
   const [showEducationForm, setShowEducationForm] = useState(false);
   const [showTestForm, setShowTestForm] = useState(false);
   
   const [editingEduIndex, setEditingEduIndex] = useState(-1);
   const [editingTestIndex, setEditingTestIndex] = useState(-1);
-  
-  const [helpAnchorEl, setHelpAnchorEl] = useState<null | HTMLElement>(null);
 
   // 🔧 טעינת נתונים קיימים
   const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -227,14 +217,6 @@ export default function EducationAndTestSection({
       onTestUpdateRef.current(testList);
     }
   }, [testList, isInitialLoad, blockAutoSave, autoSave, manualSaveOnly]);
-
-  const handleHelpClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    setHelpAnchorEl(event.currentTarget);
-  };
-  
-  const handleHelpClose = () => {
-    setHelpAnchorEl(null);
-  };
 
   const handleEducationChange = (field: keyof EducationData, value: any) => {
     console.log(`📝 השכלה - שדה ${field} השתנה ל:`, value);
@@ -889,4 +871,3 @@ export default function EducationAndTestSection({
     </ThemeProvider>
   );
 }
-

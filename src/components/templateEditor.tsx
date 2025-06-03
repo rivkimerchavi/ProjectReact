@@ -1,6 +1,6 @@
 // TemplateEditor מתוקן - קומפוננטה מלאה עם דיבוג
 import React, { useEffect, useState, useCallback } from 'react';
-import axios, { AxiosRequestConfig } from 'axios';
+import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 import { useParams, useLocation } from 'react-router-dom';
 import PersonalDetailsForm from '../components/ResumeFile/personalDetailsForm';
 import ResumeDescriptionGenerator from '../components/ResumeFile/resumeDescriptionGenerator';
@@ -286,13 +286,18 @@ const TemplateEditor: React.FC = () => {
     (window as any).blockAutoSave = true;
     (window as any).resumeAutoSaveBlocked = true;
     
+    // תיקון טיפוס axios
     const originalAxios = axios.post;
-    axios.post = (...args: [string, any?, AxiosRequestConfig?]) => {
-      if (args[0] && args[0].includes('resume-file') && blockAutoSave) {
-        console.log('🚫 חסימת שמירה אוטומטית!', args[0]);
-        return Promise.resolve({ data: { blocked: true } });
+    axios.post = <T = any, R = AxiosResponse<T>, D = any>(
+      url: string, 
+      data?: D, 
+      config?: AxiosRequestConfig<D>
+    ): Promise<R> => {
+      if (url && url.includes('resume-file') && blockAutoSave) {
+        console.log('🚫 חסימת שמירה אוטומטית!', url);
+        return Promise.resolve({ data: { blocked: true } } as R);
       }
-      return originalAxios.apply(axios, args);
+      return originalAxios.call(axios, url, data, config);
     };
 
     return () => {
