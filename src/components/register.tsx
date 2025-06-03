@@ -5,12 +5,10 @@ import { useForm, Controller } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-
-
 const Register: React.FC = () => {
   const [registerError, setRegisterError] = useState('');
   const { control, handleSubmit, formState: { errors } } = useForm();
- const navigate = useNavigate();
+  const navigate = useNavigate();
 
   const onSubmit = async (data: any) => {
     setRegisterError('');
@@ -19,20 +17,35 @@ const Register: React.FC = () => {
     try {
       // שליחת בקשה לשרת בכתובת HTTP5227
       const response = await axios.post(`${API_BASE_URL}/api/User/register`, {
-   
         name: data.name,
         email: data.email,
         password: data.password,
       });
-      navigate('/templateList')
-      // אם ההרשמה הצליחה, נשמור את הטוקן ב-localStorage וננווט לדף אחר
-      localStorage.setItem("token", response.data.token);
-      // userStore.register({ email: data.email, password: data.password });
-      console.log("register successfully", response.data);
+
+      // אם ההרשמה הצליחה, נשמור את הטוקן ב-localStorage
+      if (response.data.token) {
+        localStorage.setItem("token", response.data.token);
+        localStorage.setItem("jwtToken", response.data.token); // גם בשם הזה למקרה שהאפליקציה משתמשת בו
+      }
+      
+      console.log("Register successfully", response.data);
+      
+      // עכשיו ננווט לדף TemplateList
       navigate("/templateList");
-    } catch (error) {
-      console.error("register failed", error);
-      setRegisterError("Registration failed. Please try again.");
+      
+    } catch (error: any) {
+      console.error("Register failed", error);
+      
+      // הצגת הודעת שגיאה מפורטת יותר
+      if (error.response?.data?.message) {
+        setRegisterError(error.response.data.message);
+      } else if (error.response?.status === 400) {
+        setRegisterError("Registration failed. Please check your details and try again.");
+      } else if (error.response?.status === 409) {
+        setRegisterError("User already exists. Please try with a different email.");
+      } else {
+        setRegisterError("Registration failed. Please try again.");
+      }
     }
   };
 
@@ -56,37 +69,6 @@ const Register: React.FC = () => {
         </Typography>
 
         <form onSubmit={handleSubmit(onSubmit)} style={{ width: "100%" }}>
-          {/* <Controller
-            name="id"
-            control={control}
-            defaultValue=""
-            rules={{ required: "ID is required" }}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="ID"
-                variant="outlined"
-                fullWidth
-                margin="normal"
-                error={!!errors.id}
-                helperText={errors.id?.message as string || ""}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    '& fieldset': {
-                      borderColor: '#00bcd4',  // צבע תכלת לשיקוף
-                    },
-                    '&:hover fieldset': {
-                      borderColor: '#00bcd4',  // צבע תכלת כשעוברים עם העכבר
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: '#00bcd4',  // צבע תכלת כשיש פוקוס
-                    },
-                  },
-                }}
-              />
-            )}
-          /> */}
-
           <Controller
             name="name"
             control={control}
